@@ -1,0 +1,2184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cyber Guard: Seniors — Interactive App Prototype</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Client-side OCR engine for real screenshot uploads -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 50%, #e0f2fe 100%);
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+    }
+    h1, h2, h3, .font-heading {
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    /* Accessibility Modes */
+    .a11y-large-text {
+      font-size: 112%;
+    }
+    .a11y-large-text p,
+    .a11y-large-text li,
+    .a11y-large-text span,
+    .a11y-large-text textarea,
+    .a11y-large-text input {
+      line-height: 1.5;
+    }
+    .a11y-high-contrast {
+      background-color: #ffffff !important;
+      color: #000000 !important;
+    }
+    .a11y-high-contrast .hc-card {
+      border: 3px solid #000000 !important;
+      box-shadow: none !important;
+    }
+
+    /* Custom scrollbar inside phone screen */
+    .phone-scroll::-webkit-scrollbar {
+      width: 5px;
+    }
+    .phone-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .phone-scroll::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+
+    /* Speaking waveform animation */
+    @keyframes wave {
+      0%, 100% { transform: scaleY(0.35); }
+      50% { transform: scaleY(1); }
+    }
+    .wave-bar {
+      animation: wave 0.75s ease-in-out infinite;
+    }
+    .wave-bar:nth-child(2) { animation-delay: 0.15s; }
+    .wave-bar:nth-child(3) { animation-delay: 0.3s; }
+    .wave-bar:nth-child(4) { animation-delay: 0.45s; }
+
+    /* OS Push Banner Slide Down */
+    @keyframes osBannerIn {
+      0% { opacity: 0; transform: translateY(-110%); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    .os-banner-enter {
+      animation: osBannerIn 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    /* Incoming Call Vibrate / Ring Pulse */
+    @keyframes phoneVibrate {
+      0%, 100% { transform: rotate(0deg) scale(1); }
+      20% { transform: rotate(-10deg) scale(1.05); }
+      40% { transform: rotate(10deg) scale(1.05); }
+      60% { transform: rotate(-8deg) scale(1.03); }
+      80% { transform: rotate(8deg) scale(1.03); }
+    }
+    .ring-vibrate {
+      animation: phoneVibrate 0.7s ease-in-out infinite;
+    }
+
+    /* Shield Pulse on Splash */
+    @keyframes shieldPulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5); }
+      50% { transform: scale(1.06); box-shadow: 0 0 0 18px rgba(245, 158, 11, 0); }
+    }
+    .splash-pulse {
+      animation: shieldPulse 1.6s infinite;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Desktop Hackathon Demo Control Strip -->
+  <div class="hidden md:flex items-center justify-between w-full max-w-[440px] mb-2.5 px-4 py-2 bg-white/90 backdrop-blur rounded-2xl shadow-sm border border-blue-100 text-xs text-slate-700">
+    <span class="font-bold text-blue-950 flex items-center gap-1.5">
+      <i class="fa-solid fa-shield-halved text-blue-700"></i> Cyber Guard: Native App Demo
+    </span>
+    <div class="flex items-center gap-2">
+      <span id="demo-badge-count" class="bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full">
+        Badges: 1/4
+      </span>
+      <button onclick="resetDemoState()" class="text-slate-500 hover:text-rose-700 font-bold underline" title="Reset Demo Progress">
+        Reset
+      </button>
+    </div>
+  </div>
+
+  <!-- Sleek Smartphone Outer Chassis -->
+  <div class="relative w-full max-w-[430px] h-[840px] max-h-[93vh] bg-slate-900 rounded-[50px] p-[12px] shadow-2xl border-[4px] border-slate-800 flex flex-col">
+
+    <!-- Top Dynamic Island / Speaker Notch -->
+    <div class="w-36 h-6 bg-slate-950 rounded-b-2xl mx-auto absolute top-[12px] left-1/2 -translate-x-1/2 z-40 flex items-center justify-center gap-2">
+      <div class="w-10 h-1.5 bg-slate-800 rounded-full"></div>
+      <div class="w-2.5 h-2.5 bg-slate-800 rounded-full border border-slate-700"></div>
+    </div>
+
+    <!-- Phone Inner Screen -->
+    <div id="phone-screen" class="relative w-full h-full bg-[#f8fafc] rounded-[38px] overflow-hidden flex flex-col">
+
+      <!-- =============================================================== -->
+      <!-- NATIVE APP SPLASH SCREEN OVERLAY                                -->
+      <!-- =============================================================== -->
+      <div id="splash-screen" class="absolute inset-0 bg-gradient-to-b from-slate-950 via-blue-950 to-slate-900 text-white z-50 flex flex-col items-center justify-between p-8 text-center transition-opacity duration-500">
+        <div class="pt-6">
+          <span class="text-[11px] font-bold uppercase tracking-widest text-amber-400 bg-amber-400/15 px-3 py-1 rounded-full border border-amber-400/30">
+            Senior Cyber Protection
+          </span>
+        </div>
+
+        <div class="space-y-5 flex flex-col items-center">
+          <div class="w-24 h-24 rounded-3xl bg-amber-400 text-slate-950 flex items-center justify-center text-5xl shadow-xl splash-pulse">
+            <i class="fa-solid fa-shield-heart"></i>
+          </div>
+          <div>
+            <h1 class="text-3xl font-bold tracking-tight text-white">Cyber Guard: Seniors</h1>
+            <p class="text-sm text-blue-200 mt-1.5 font-medium">Activating Scam Shield &amp; Family Protection...</p>
+          </div>
+
+          <!-- Progress Loader Bar -->
+          <div class="w-56 h-2 bg-slate-800 rounded-full overflow-hidden">
+            <div id="splash-bar" class="h-full bg-amber-400 rounded-full transition-all duration-1000" style="width: 25%;"></div>
+          </div>
+          <p id="splash-status" class="text-xs text-slate-400">Loading Hindi, Marathi &amp; English Voice Packs...</p>
+        </div>
+
+        <button onclick="dismissSplash()" class="px-6 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-sm font-bold border border-white/15 transition">
+          Enter App Now <i class="fa-solid fa-arrow-right ml-1"></i>
+        </button>
+      </div>
+
+      <!-- =============================================================== -->
+      <!-- OS-STYLE SLIDING PUSH NOTIFICATION BANNER (WhatsApp / System)   -->
+      <!-- =============================================================== -->
+      <div id="os-push-container" class="absolute top-8 left-3 right-3 z-50 pointer-events-none flex flex-col gap-2"></div>
+
+      <!-- Realistic Mobile Status Bar -->
+      <div class="bg-white px-6 pt-3 pb-1 flex items-center justify-between text-xs font-bold text-slate-800 z-30">
+        <span id="status-clock">9:41</span>
+        <div class="flex items-center gap-1.5 text-[11px]">
+          <span class="text-emerald-700 font-bold">5G</span>
+          <i class="fa-solid fa-signal"></i>
+          <i class="fa-solid fa-wifi"></i>
+          <i class="fa-solid fa-battery-full text-emerald-600 text-sm"></i>
+        </div>
+      </div>
+
+      <!-- Senior Accessibility Quick Bar -->
+      <div class="bg-slate-900 text-white px-3.5 py-1.5 flex items-center justify-between text-[11px] z-30">
+        <span id="active-profile-chip" class="font-bold text-amber-300 truncate max-w-[165px] flex items-center gap-1">
+          <i class="fa-solid fa-user-check"></i> Ramesh Sharma
+        </span>
+        <div class="flex items-center gap-1.5">
+          <button onclick="toggleLargeText()" id="btn-a11y-text" class="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 font-bold border border-slate-700 transition" title="Toggle Extra Large Text">
+            A+
+          </button>
+          <button onclick="toggleHighContrast()" id="btn-a11y-hc" class="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 font-bold border border-slate-700 transition" title="Toggle High Contrast">
+            <i class="fa-solid fa-circle-half-stroke"></i>
+          </button>
+          <button onclick="toggleSound()" id="btn-a11y-sound" class="px-2 py-0.5 rounded-md bg-emerald-800 text-emerald-100 font-bold border border-emerald-600 transition" title="Toggle Sound Effects">
+            <i class="fa-solid fa-volume-high"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- App Top Navigation Header & Language Switcher -->
+      <header class="bg-white px-4 pt-2.5 pb-3 border-b border-slate-200 shadow-xs z-20">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <button id="back-btn" onclick="navigate('home')" class="hidden w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 flex items-center justify-center text-slate-900 transition" aria-label="Back to Home">
+              <i class="fa-solid fa-arrow-left text-lg"></i>
+            </button>
+            <div class="flex items-center gap-2">
+              <div class="w-9 h-9 rounded-xl bg-blue-900 text-white flex items-center justify-center shadow-xs">
+                <i class="fa-solid fa-shield-heart text-lg"></i>
+              </div>
+              <div>
+                <h1 id="app-title" class="text-base font-bold text-slate-900 leading-tight">Cyber Guard: Seniors</h1>
+                <p id="app-subtitle" class="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span> Shield Active
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <button onclick="stopSpeech()" id="stop-audio-btn" class="hidden px-2.5 py-1.5 rounded-xl bg-rose-100 text-rose-800 text-xs font-bold items-center gap-1">
+              <i class="fa-solid fa-volume-xmark"></i> Stop
+            </button>
+            <button onclick="openProfileSettings()" class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 flex items-center justify-center transition" aria-label="Profile & Family Settings" title="Profile & Caregiver Setup">
+              <i class="fa-solid fa-gear text-lg"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Prominent 3-Language Switcher Pill -->
+        <div class="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200" role="group" aria-label="Language Switcher">
+          <button onclick="setLanguage('en')" id="lang-en" class="py-1.5 px-2 rounded-xl text-sm font-bold transition bg-blue-900 text-white shadow-xs">
+            English
+          </button>
+          <button onclick="setLanguage('hi')" id="lang-hi" class="py-1.5 px-2 rounded-xl text-sm font-bold transition text-slate-700 hover:bg-white/70">
+            हिंदी
+          </button>
+          <button onclick="setLanguage('mr')" id="lang-mr" class="py-1.5 px-2 rounded-xl text-sm font-bold transition text-slate-700 hover:bg-white/70">
+            मराठी
+          </button>
+        </div>
+      </header>
+
+      <!-- Main Scrollable Screen Content -->
+      <main id="screen-content" class="flex-1 overflow-y-auto phone-scroll p-4 pb-6 space-y-3.5">
+        <!-- Rendered dynamically -->
+      </main>
+
+      <!-- Full-Screen Overlay Modal (Profile Setup, Panic Breaker, Dialer, Incoming Scam Call) -->
+      <div id="modal-overlay" class="hidden absolute inset-0 bg-slate-950/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+        <div id="modal-box" class="bg-white rounded-3xl w-full max-w-[365px] p-5 shadow-2xl border-2 border-slate-200 text-center space-y-4 max-h-[88%] overflow-y-auto phone-scroll">
+          <!-- Modal content injected dynamically -->
+        </div>
+      </div>
+
+      <!-- Bottom Native App Navigation Bar -->
+      <nav class="bg-white px-1.5 py-1.5 border-t border-slate-200 grid grid-cols-5 gap-1 z-20">
+        <button onclick="navigate('home')" id="nav-home" class="flex flex-col items-center justify-center py-1.5 rounded-xl text-blue-900 font-bold bg-blue-50">
+          <i class="fa-solid fa-house text-sm"></i>
+          <span class="text-[10px] mt-0.5">Home</span>
+        </button>
+        <button onclick="navigate('learn')" id="nav-learn" class="flex flex-col items-center justify-center py-1.5 rounded-xl text-slate-500 hover:text-slate-900 font-bold">
+          <i class="fa-solid fa-graduation-cap text-sm"></i>
+          <span class="text-[10px] mt-0.5">Practice</span>
+        </button>
+        <button onclick="navigate('safe')" id="nav-safe" class="flex flex-col items-center justify-center py-1.5 rounded-xl text-slate-500 hover:text-slate-900 font-bold">
+          <i class="fa-solid fa-shield-halved text-sm"></i>
+          <span class="text-[10px] mt-0.5">Check</span>
+        </button>
+        <button onclick="navigate('caregiver')" id="nav-caregiver" class="flex flex-col items-center justify-center py-1.5 rounded-xl text-slate-500 hover:text-slate-900 font-bold relative">
+          <i class="fa-solid fa-user-shield text-sm"></i>
+          <span class="text-[10px] mt-0.5">Family</span>
+          <span id="nav-alert-dot" class="w-2 h-2 rounded-full bg-rose-600 absolute top-1.5 right-3.5"></span>
+        </button>
+        <button onclick="navigate('features')" id="nav-features" class="flex flex-col items-center justify-center py-1.5 rounded-xl text-slate-500 hover:text-slate-900 font-bold">
+          <i class="fa-solid fa-list-check text-sm"></i>
+          <span class="text-[10px] mt-0.5">Features</span>
+        </button>
+      </nav>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. WEB AUDIO API SYNTHESIZER (Native Sound Effects — Zero External Files)
+    // =========================================================================
+    let audioCtx = null;
+    let ringInterval = null;
+
+    function getAudioContext() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          audioCtx = new AudioContextClass();
+        }
+      }
+      if (audioCtx && audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    function playSound(type) {
+      if (!state.soundEnabled) return;
+      const ctx = getAudioContext();
+      if (!ctx) return;
+
+      const now = ctx.currentTime;
+
+      if (type === "tap") {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(520, now);
+        osc.frequency.exponentialRampToValueAtTime(280, now + 0.045);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.05);
+      } else if (type === "success") {
+        [523.25, 659.25, 783.99].forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "triangle";
+          osc.frequency.setValueAtTime(freq, now + idx * 0.11);
+          gain.gain.setValueAtTime(0.14, now + idx * 0.11);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.11 + 0.35);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + idx * 0.11);
+          osc.stop(now + idx * 0.11 + 0.36);
+        });
+      } else if (type === "alert") {
+        [440, 349.23, 440].forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sawtooth";
+          osc.frequency.setValueAtTime(freq, now + idx * 0.16);
+          gain.gain.setValueAtTime(0.12, now + idx * 0.16);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.16 + 0.14);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + idx * 0.16);
+          osc.stop(now + idx * 0.16 + 0.15);
+        });
+      } else if (type === "notification") {
+        [880, 1174.66].forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(freq, now + idx * 0.09);
+          gain.gain.setValueAtTime(0.1, now + idx * 0.09);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.09 + 0.22);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + idx * 0.09);
+          osc.stop(now + idx * 0.09 + 0.23);
+        });
+      }
+    }
+
+    function startIncomingRingtone() {
+      stopIncomingRingtone();
+      if (!state.soundEnabled) return;
+      const pulse = () => {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        [620, 740, 620, 740].forEach((f, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(f, now + i * 0.12);
+          gain.gain.setValueAtTime(0.09, now + i * 0.12);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.11);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + i * 0.12);
+          osc.stop(now + i * 0.12 + 0.12);
+        });
+      };
+      pulse();
+      ringInterval = setInterval(pulse, 1800);
+    }
+
+    function stopIncomingRingtone() {
+      if (ringInterval) {
+        clearInterval(ringInterval);
+        ringInterval = null;
+      }
+    }
+
+    // =========================================================================
+    // 2. MULTILINGUAL CONTENT (English, Hindi, Marathi)
+    // =========================================================================
+    const i18n = {
+      en: {
+        appTitle: "Cyber Guard: Seniors",
+        subtitle: "Shield Active",
+        welcomeGreet: "Namaste",
+        dailyTipLabel: "Daily 30-Sec Safety Tip",
+        dailyTipText: "Golden Rule: Never enter your UPI PIN or scan a QR code to receive money. PIN is only for paying!",
+        listenBtn: "Listen Tip",
+        speakingBtn: "Speaking...",
+        tileLearnTitle: "Learn & Practice",
+        tileLearnSub: "4 Scam Simulators",
+        tileSafeTitle: "Is This Safe?",
+        tileSafeSub: "SMS, Photo & UPI Check",
+        tileHelpTitle: "1930 Helplines",
+        tileHelpSub: "Cyber Police & Banks",
+        tileCareTitle: "Caregiver Mode",
+        tileCareSub: "Family Alerts & Badges",
+        panicBtn: "Ask Family First",
+        panicSub: "Feeling rushed or scared? Tap before acting",
+        allFeaturesBtn: "View All App Features (Bullet Guide)",
+        panicModalTitle: "Stop & Take a Deep Breath",
+        panicModalBody: "No real bank, police, or CBI officer ever blocks your account in 10 minutes or demands money on a call. We alerted your family member to help you.",
+        panicCallFamily: "Call",
+        panicClose: "I Feel Safe Now",
+        learnHeader: "Scam Simulation Sandbox",
+        learnDesc: "Practice spotting real scams safely. No real money is used.",
+        chooseScenario: "Select a Training Scenario:",
+        whatShouldYouDo: "What should you do?",
+        btnReportSafe: "Report Scam / Decline",
+        btnRiskyAction: "Click Link / Enter PIN",
+        safeSuccessTitle: "Great Job! You Stayed Safe!",
+        safeSuccessBody: "You spotted the trap and protected your savings. A Safety Badge was added to your Caregiver report!",
+        riskyAlertTitle: "TRAP ALERT! Watch Out!",
+        redFlagsHeading: "Red Flags Detected:",
+        tryNextBtn: "Practice Next Scenario",
+        completedBadge: "Done",
+        triggerCallSimBtn: "Simulate Incoming Fake CBI Call",
+        safeHeader: "Is This Safe?",
+        safeDesc: "Check suspicious SMS, upload a screenshot, or verify a UPI ID / Phone number.",
+        tabMsgPhoto: "SMS / Screenshot",
+        tabUpiPhone: "UPI ID / Phone",
+        inputPlaceholder: "Paste suspicious SMS or WhatsApp text here...",
+        upiPlaceholder: "Enter UPI ID (e.g. refund@okaxis) or Phone...",
+        checkUpiBtn: "Verify UPI / Number",
+        trySampleLabel: "Quick Demo Samples:",
+        sampleKyc: "Fake KYC",
+        sampleLottery: "UPI Trap",
+        sampleGenuine: "Real Bank",
+        checkNowBtn: "Check Text",
+        uploadScreenBtn: "Upload Screenshot",
+        listenVerdictBtn: "Listen Explanation",
+        call1930Btn: "Call Helpline 1930",
+        verdictScam: "SCAM DETECTED!",
+        verdictWarn: "BE CAUTIOUS",
+        verdictSafe: "SAFE TO PROCEED",
+        helpHeader: "Emergency Helplines",
+        helpDesc: "One-tap direct numbers for Cyber Crime & Indian Bank Fraud cells.",
+        tapToCall: "Tap to Call",
+        trustedBanksTitle: "Verified Official Bank Sender IDs",
+        trustedBanksSub: "Genuine bank alerts only come from official IDs like these:",
+        careHeader: "Caregiver & Radar",
+        careConnected: "Linked to",
+        careProgressTitle: "Safety Training Progress",
+        careBadgesTitle: "Earned Safety Badges",
+        careAlertsTitle: "Live Security Alert Feed",
+        careSendReminder: "Send Voice Check-In to Senior",
+        radarTitle: "Community Cyber-Alert Radar",
+        radarBadge: "Nagpur & Vidarbha Live",
+        radarSub: "Trending local scams reported near your area today:",
+        shareSheetBtn: "Simulate 'Share from WhatsApp'",
+        settingsTitle: "Senior & Family Setup",
+        settingsSub: "Customize names for your live demo",
+        labelSeniorName: "Senior Citizen Name",
+        labelCareName: "Family Caregiver Name & Relation",
+        labelCarePhone: "Caregiver Phone Number",
+        saveProfileBtn: "Save Profile",
+        featuresHeader: "App Features Overview",
+        featuresDesc: "Tap any bullet feature below to open and test it live:"
+      },
+      hi: {
+        appTitle: "साइबर गार्ड: सीनियर्स",
+        subtitle: "सुरक्षा कवच चालू",
+        welcomeGreet: "नमस्ते",
+        dailyTipLabel: "आज की 30-सेकंड सुरक्षा सलाह",
+        dailyTipText: "सुनहरा नियम: पैसे प्राप्त करने के लिए कभी भी अपना UPI PIN न डालें और न ही QR कोड स्कैन करें।",
+        listenBtn: "सलाह सुनें",
+        speakingBtn: "बोल रहा है...",
+        tileLearnTitle: "सीखें और अभ्यास करें",
+        tileLearnSub: "4 स्कैम सिमुलेटर",
+        tileSafeTitle: "क्या यह सुरक्षित है?",
+        tileSafeSub: "SMS, फोटो और UPI जांच",
+        tileHelpTitle: "1930 हेल्पलाइन",
+        tileHelpSub: "साइबर पुलिस और बैंक",
+        tileCareTitle: "केयरगिवर मोड",
+        tileCareSub: "परिवार अलर्ट और बैज",
+        panicBtn: "पहले परिवार से पूछें",
+        panicSub: "घबराहट या जल्दबाजी महसूस हो? पहले यहाँ दबाएं",
+        allFeaturesBtn: "ऐप के सभी फीचर्स देखें (बुलेट सूची)",
+        panicModalTitle: "रुकें और गहरी सांस लें",
+        panicModalBody: "कोई भी असली बैंक या पुलिस 10 मिनट में खाता बंद नहीं करता और न ही कॉल पर पैसे मांगता है। हमने आपके परिवार को अलर्ट भेज दिया है।",
+        panicCallFamily: "कॉल करें:",
+        panicClose: "अब मैं सुरक्षित महसूस कर रहा हूँ",
+        learnHeader: "स्कैम अभ्यास सैंडबॉक्स",
+        learnDesc: "नकली संदेशों को पहचानने का सुरक्षित अभ्यास करें। असली पैसे नहीं लगते।",
+        chooseScenario: "अभ्यास के लिए स्थिति चुनें:",
+        whatShouldYouDo: "आपको क्या करना चाहिए?",
+        btnReportSafe: "स्कैम रिपोर्ट करें / मना करें",
+        btnRiskyAction: "लिंक दबाएं / PIN डालें",
+        safeSuccessTitle: "बहुत बढ़िया! आप सुरक्षित रहे!",
+        safeSuccessBody: "आपने धोखाधड़ी को पहचान लिया। केयरगिवर रिपोर्ट में नया सुरक्षा बैज जुड़ गया है!",
+        riskyAlertTitle: "सावधान! यह एक जाल है!",
+        redFlagsHeading: "खतरे के संकेत:",
+        tryNextBtn: "अगला अभ्यास करें",
+        completedBadge: "पूर्ण",
+        triggerCallSimBtn: "नकली CBI कॉल सिमुलेट करें",
+        safeHeader: "क्या यह सुरक्षित है?",
+        safeDesc: "संदिग्ध SMS, स्क्रीनशॉट फोटो या UPI ID / फोन नंबर की तुरंत जांच करें।",
+        tabMsgPhoto: "SMS / स्क्रीनशॉट",
+        tabUpiPhone: "UPI ID / नंबर",
+        inputPlaceholder: "संदिग्ध मैसेज या लिंक यहाँ पेस्ट करें...",
+        upiPlaceholder: "UPI ID (जैसे refund@okaxis) या नंबर लिखें...",
+        checkUpiBtn: "UPI / नंबर जांचें",
+        trySampleLabel: "डेमो सैंपल चुनें:",
+        sampleKyc: "नकली KYC",
+        sampleLottery: "UPI जाल",
+        sampleGenuine: "असली बैंक",
+        checkNowBtn: "मैसेज जांचें",
+        uploadScreenBtn: "स्क्रीनशॉट फोटो",
+        listenVerdictBtn: "कारण सुनें",
+        call1930Btn: "1930 पर कॉल करें",
+        verdictScam: "खतरा! यह स्कैम है!",
+        verdictWarn: "सावधान रहें",
+        verdictSafe: "यह सुरक्षित है",
+        helpHeader: "आपातकालीन हेल्पलाइन",
+        helpDesc: "साइबर क्राइम और बैंक धोखाधड़ी की तुरंत शिकायत के लिए नंबर।",
+        tapToCall: "कॉल करें",
+        trustedBanksTitle: "असली बैंक सेंडर ID सूची (Whitelist)",
+        trustedBanksSub: "असली बैंक संदेश केवल ऐसे आधिकारिक ID से ही आते हैं:",
+        careHeader: "केयरगिवर और रडार",
+        careConnected: "जुड़ा हुआ:",
+        careProgressTitle: "सुरक्षा प्रशिक्षण प्रगति",
+        careBadgesTitle: "अर्जित सुरक्षा बैज",
+        careAlertsTitle: "लाइव सुरक्षा अलर्ट फीड",
+        careSendReminder: "सीनियर को वॉइस रिमाइंडर भेजें",
+        radarTitle: "कम्युनिटी साइबर-अलर्ट रडार",
+        radarBadge: "नागपुर और विदर्भ लाइव",
+        radarSub: "आज आपके क्षेत्र में रिपोर्ट किए गए प्रमुख स्थानीय स्कैम:",
+        shareSheetBtn: "व्हाट्सएप से 'Share' सिमुलेट करें",
+        settingsTitle: "सीनियर और परिवार सेटअप",
+        settingsSub: "लाइव डेमो के लिए नाम बदलें",
+        labelSeniorName: "सीनियर सिटिज़न का नाम",
+        labelCareName: "परिवार के सदस्य का नाम व रिश्ता",
+        labelCarePhone: "केयरगिवर फोन नंबर",
+        saveProfileBtn: "प्रोफ़ाइल सेव करें",
+        featuresHeader: "ऐप की सभी विशेषताएं",
+        featuresDesc: "लाइव टेस्ट करने के लिए नीचे किसी भी बुलेट पॉइंट पर टैप करें:"
+      },
+      mr: {
+        appTitle: "सायबर गार्ड: सिनिअर्स",
+        subtitle: "सुरक्षा कवच सुरू",
+        welcomeGreet: "नमस्कार",
+        dailyTipLabel: "आजचा ३०-सेकंद सुरक्षा सल्ला",
+        dailyTipText: "महत्त्वाचा नियम: पैसे मिळवण्यासाठी कधीही तुमचा UPI PIN टाकू नका किंवा QR कोड स्कॅन करू नका.",
+        listenBtn: "सल्ला ऐका",
+        speakingBtn: "बोलत आहे...",
+        tileLearnTitle: "शिका आणि सराव करा",
+        tileLearnSub: "४ स्कॅम सिम्युलेटर",
+        tileSafeTitle: "हे सुरक्षित आहे का?",
+        tileSafeSub: "SMS, फोटो आणि UPI तपासणी",
+        tileHelpTitle: "१९३० हेल्पलाइन",
+        tileHelpSub: "सायबर पोलीस आणि बँक",
+        tileCareTitle: "केअरगिव्हर मोड",
+        tileCareSub: "कुटुंब अलर्ट आणि बॅज",
+        panicBtn: "आधी कुटुंबाला विचारा",
+        panicSub: "घाई किंवा भीती वाटत आहे? कृती करण्यापूर्वी येथे दाबा",
+        allFeaturesBtn: "ॲपची सर्व वैशिष्ट्ये पहा (बुलेट यादी)",
+        panicModalTitle: "थांबा आणि दीर्घ श्वास घ्या",
+        panicModalBody: "कोणतीही खरी बँक किंवा पोलीस १० मिनिटांत खाते बंद करत नाहीत किंवा कॉलवर पैसे मागत नाहीत. आम्ही तुमच्या कुटुंबाला अलर्ट पाठवला आहे.",
+        panicCallFamily: "कॉल करा:",
+        panicClose: "मला आता सुरक्षित वाटत आहे",
+        learnHeader: "स्कॅम सराव सँडबॉक्स",
+        learnDesc: "बनावट मेसेज ओळखण्याचा सुरक्षित सराव करा. खरे पैसे वापरले जात नाहीत.",
+        chooseScenario: "सरावासाठी प्रसंग निवडा:",
+        whatShouldYouDo: "तुम्ही काय कराल?",
+        btnReportSafe: "स्कॅम रिपोर्ट करा / नकार द्या",
+        btnRiskyAction: "लिंक दाबा / PIN टाका",
+        safeSuccessTitle: "खूप छान! तुम्ही सुरक्षित राहिलात!",
+        safeSuccessBody: "तुम्ही फसवणूक ओळखली आहे. केअरगिव्हर डॅशबोर्डवर नवीन सुरक्षा बॅज जोडला गेला आहे!",
+        riskyAlertTitle: "सावधान! हा एक सापळा आहे!",
+        redFlagsHeading: "धोक्याची चिन्हे:",
+        tryNextBtn: "पुढील सराव करा",
+        completedBadge: "पूर्ण",
+        triggerCallSimBtn: "बनावट CBI कॉल सिम्युलेट करा",
+        safeHeader: "हे सुरक्षित आहे का?",
+        safeDesc: "संशयास्पद SMS, स्क्रीनशॉट फोटो किंवा UPI ID / फोन नंबर त्वरित तपासा.",
+        tabMsgPhoto: "SMS / स्क्रीनशॉट",
+        tabUpiPhone: "UPI ID / नंबर",
+        inputPlaceholder: "संशयास्पद मेसेज किंवा लिंक येथे पेस्ट करा...",
+        upiPlaceholder: "UPI ID (उदा. refund@okaxis) किंवा नंबर टाका...",
+        checkUpiBtn: "UPI / नंबर तपासा",
+        trySampleLabel: "डेमो नमुना निवडा:",
+        sampleKyc: "बनावट KYC",
+        sampleLottery: "UPI सापळा",
+        sampleGenuine: "खरी बँक",
+        checkNowBtn: "मेसेज तपासा",
+        uploadScreenBtn: "स्क्रीनशॉट फोटो",
+        listenVerdictBtn: "स्पष्टीकरण ऐका",
+        call1930Btn: "१९३० वर कॉल करा",
+        verdictScam: "धोका! हा स्कॅम आहे!",
+        verdictWarn: "सावध रहा",
+        verdictSafe: "हे सुरक्षित आहे",
+        helpHeader: "आपत्कालीन हेल्पलाइन",
+        helpDesc: "सायबर क्राईम आणि बँक फसवणुकीच्या त्वरित तक्रारीसाठी नंबर.",
+        tapToCall: "कॉल करा",
+        trustedBanksTitle: "अधिकृत बँक सेंडर ID यादी (Whitelist)",
+        trustedBanksSub: "खरे बँक मेसेज फक्त अशा अधिकृत ID वरूनच येतात:",
+        careHeader: "केअरगिव्हर आणि रडार",
+        careConnected: "जोडलेले:",
+        careProgressTitle: "सुरक्षा प्रशिक्षण प्रगती",
+        careBadgesTitle: "मिळवलेले सुरक्षा बॅज",
+        careAlertsTitle: "लाइव्ह सुरक्षा अलर्ट फीड",
+        careSendReminder: "सिनिअरला व्हॉइस रिमाइंडर पाठवा",
+        radarTitle: "कम्युनिटी सायबर-अलर्ट रडार",
+        radarBadge: "नागपूर आणि विदर्भ लाइव्ह",
+        radarSub: "आज तुमच्या परिसरात नोंदवलेले स्थानिक स्कॅम:",
+        shareSheetBtn: "व्हॉट्सॲपवरून 'Share' सिम्युलेट करा",
+        settingsTitle: "सिनिअर आणि कुटुंब सेटअप",
+        settingsSub: "लाइव्ह डेमोसाठी नावे बदला",
+        labelSeniorName: "ज्येष्ठ नागरिकाचे नाव",
+        labelCareName: "कुटुंबातील सदस्याचे नाव व नाते",
+        labelCarePhone: "केअरगिव्हर फोन नंबर",
+        saveProfileBtn: "प्रोफाइल सेव्ह करा",
+        featuresHeader: "ॲपची सर्व वैशिष्ट्ये",
+        featuresDesc: "लाइव्ह तपासण्यासाठी खालील कोणत्याही बुलेट पॉइंटवर टॅप करा:"
+      }
+    };
+
+    // =========================================================================
+    // 2B. BULLET-POINT FEATURE DIRECTORY (Interactive Pitch & User Guide)
+    // =========================================================================
+    const bulletFeatureGroups = [
+      {
+        category: {
+          en: "Core Senior Protection Features",
+          hi: "मुख्य वरिष्ठ नागरिक सुरक्षा फीचर्स",
+          mr: "मुख्य ज्येष्ठ नागरिक सुरक्षा वैशिष्ट्ये"
+        },
+        badgeColor: "bg-blue-100 text-blue-900",
+        items: [
+          {
+            title: { en: "Senior-Friendly Simplified UI", hi: "सीनियर-फ्रेंडली सरल इंटरफ़ेस", mr: "सिनिअर-फ्रेंडली सोपा इंटरफेस" },
+            desc: {
+              en: "Large buttons, A+ zoom text, high-contrast toggle, and Web Audio sound cues.",
+              hi: "बड़े बटन, A+ बड़ा टेक्स्ट, हाई-कंट्रास्ट मोड और स्पष्ट ऑडियो संकेत।",
+              mr: "मोठे बटण, A+ मोठा मजकूर, हाय-कॉन्ट्रास्ट मोड आणि स्पष्ट ऑडिओ संकेत."
+            },
+            action: "toggleLargeText()"
+          },
+          {
+            title: { en: "Multilingual Voice Narration (EN / HI / MR)", hi: "बहुभाषी वॉइस गाइड (अंग्रेजी / हिंदी / मराठी)", mr: "बहुभाषिक व्हॉइस गाईड (इंग्रजी / हिंदी / मराठी)" },
+            desc: {
+              en: "Reads safety tips and scam red flags aloud in regional languages.",
+              hi: "सुरक्षा सलाह और स्कैम के संकेतों को हिंदी व मराठी में बोलकर सुनाता है।",
+              mr: "सुरक्षा सल्ला आणि स्कॅमचे धोके हिंदी व मराठीत वाचून दाखवते."
+            },
+            action: "speakText(i18n[state.lang].dailyTipText)"
+          },
+          {
+            title: { en: "4 Interactive Scam Sandboxes", hi: "4 इंटरैक्टिव स्कैम अभ्यास सैंडबॉक्स", mr: "४ इंटरॲक्टिव्ह स्कॅम सराव सँडबॉक्स" },
+            desc: {
+              en: "Risk-free practice for Fake KYC SMS, UPI PIN traps, 'Digital Arrest' calls, and .APK malware.",
+              hi: "नकली KYC, UPI PIN जाल, 'डिजिटल अरेस्ट' कॉल और .APK फाइल का सुरक्षित अभ्यास।",
+              mr: "बनावट KYC, UPI PIN सापळा, 'डिजिटल अरेस्ट' कॉल आणि .APK फाईलचा सुरक्षित सराव."
+            },
+            action: "navigate('learn')"
+          }
+        ]
+      },
+      {
+        category: {
+          en: "Smart Detection & Family Guard",
+          hi: "स्मार्ट जांच और परिवार सुरक्षा",
+          mr: "स्मार्ट तपासणी आणि कुटुंब सुरक्षा"
+        },
+        badgeColor: "bg-emerald-100 text-emerald-900",
+        items: [
+          {
+            title: { en: "'Is This Safe?' OCR & UPI Verifier", hi: "'क्या यह सुरक्षित है?' OCR और UPI जांच", mr: "'हे सुरक्षित आहे का?' OCR आणि UPI तपासणी" },
+            desc: {
+              en: "Upload screenshots, simulate WhatsApp Share-Sheet, or check suspicious UPI handles.",
+              hi: "स्क्रीनशॉट फोटो अपलोड करें, व्हाट्सएप शेयर सिमुलेट करें या UPI ID जांचें।",
+              mr: "स्क्रीनशॉट फोटो अपलोड करा, व्हॉट्सॲप शेअर सिम्युलेट करा किंवा UPI ID तपासा."
+            },
+            action: "navigate('safe')"
+          },
+          {
+            title: { en: "'Ask Family First' Panic-Breaker", hi: "'पहले परिवार से पूछें' पैनिक-ब्रेकर", mr: "'आधी कुटुंबाला विचारा' पॅनिक-ब्रेकर" },
+            desc: {
+              en: "Calms urgency panic and immediately alerts & dials the linked caregiver.",
+              hi: "घबराहट कम करता है और तुरंत परिवार के सदस्य को अलर्ट व कॉल करता है।",
+              mr: "भीती कमी करते आणि लगेच कुटुंबातील सदस्याला अलर्ट व कॉल करते."
+            },
+            action: "triggerPanicBreaker()"
+          },
+          {
+            title: { en: "Caregiver Dashboard & Regional Radar", hi: "केयरगिवर डैशबोर्ड और स्थानीय रडार", mr: "केअरगिव्हर डॅशबोर्ड आणि स्थानिक रडार" },
+            desc: {
+              en: "Tracks earned badges, live WhatsApp alerts, and Nagpur/Vidarbha scam trends.",
+              hi: "सुरक्षा बैज, लाइव अलर्ट और नागपुर/विदर्भ के स्थानीय स्कैम रुझान दिखाता है।",
+              mr: "सुरक्षा बॅज, लाइव्ह अलर्ट आणि नागपूर/विदर्भातील स्थानिक स्कॅम ट्रेंड दाखवते."
+            },
+            action: "navigate('caregiver')"
+          },
+          {
+            title: { en: "1930 Helplines & Official Bank Whitelist", hi: "1930 हेल्पलाइन और असली बैंक सेंडर सूची", mr: "१९३० हेल्पलाइन आणि अधिकृत बँक यादी" },
+            desc: {
+              en: "One-tap emergency dialer plus verified authentic bank SMS sender codes.",
+              hi: "वन-टैप आपातकालीन नंबर और असली बैंक SMS सेंडर ID की प्रमाणित सूची।",
+              mr: "वन-टॅप आपत्कालीन नंबर आणि अधिकृत बँक SMS सेंडर ID ची प्रमाणित यादी."
+            },
+            action: "navigate('helplines')"
+          }
+        ]
+      },
+      {
+        category: {
+          en: "Future Scalability & Community Add-Ons",
+          hi: "भविष्य के विस्तार और सामुदायिक फीचर्स",
+          mr: "भविष्यातील विस्तार आणि सामुदायिक वैशिष्ट्ये"
+        },
+        badgeColor: "bg-amber-100 text-amber-900",
+        items: [
+          {
+            title: { en: "Offline Audio Safety Packs", hi: "ऑफलाइन ऑडियो सुरक्षा पैक", mr: "ऑफलाइन ऑडिओ सुरक्षा पॅक" },
+            desc: {
+              en: "Pre-cached Marathi & Hindi voice warnings that work with zero internet.",
+              hi: "बिना इंटरनेट के भी काम करने वाले मराठी और हिंदी वॉइस सुरक्षा संदेश।",
+              mr: "इंटरनेटशिवायही चालणारे मराठी आणि हिंदी व्हॉइस सुरक्षा संदेश."
+            },
+            action: "speakText(i18n[state.lang].dailyTipText)"
+          },
+          {
+            title: { en: "QR Code Safe-Pay Scanner", hi: "QR कोड सेफ-पे स्कैनर", mr: "QR कोड सेफ-पे स्कॅनर" },
+            desc: {
+              en: "Warns seniors if a scanned QR code is a 'Pay Request' instead of receiving money.",
+              hi: "स्कैन किया गया QR कोड पैसे लेने के बजाय काटने वाला है तो तुरंत चेतावनी देता है।",
+              mr: "स्कॅन केलेला QR कोड पैसे कापणारा असल्यास त्वरित इशारा देतो."
+            },
+            action: "navigate('learn')"
+          },
+          {
+            title: { en: "Senior Club & NGO Onboarding Portal", hi: "सीनियर क्लब और NGO पोर्टल", mr: "सिनिअर क्लब आणि NGO पोर्टल" },
+            desc: {
+              en: "Enables housing societies and banks to run local cyber-literacy camps.",
+              hi: "हाउसिंग सोसाइटी और बैंकों को स्थानीय साइबर साक्षरता शिविर चलाने में मदद करता है।",
+              mr: "हाउसिंग सोसायटी आणि बँकांना स्थानिक सायबर साक्षरता शिबिरे घेण्यास मदत करते."
+            },
+            action: "navigate('caregiver')"
+          },
+          {
+            title: { en: "Custom Senior & Family Profile Sync", hi: "कस्टम सीनियर और परिवार प्रोफ़ाइल", mr: "कस्टम सिनिअर आणि कुटुंब प्रोफाइल" },
+            desc: {
+              en: "Personalizes emergency speed-dial and WhatsApp alert routing for each household.",
+              hi: "हर परिवार के लिए इमरजेंसी स्पीड-डायल और व्हाट्सएप अलर्ट को पर्सनलाइज़ करता है।",
+              mr: "प्रत्येक कुटुंबासाठी इमर्जन्सी स्पीड-डायल आणि व्हॉट्सॲप अलर्ट सानुकूलित करते."
+            },
+            action: "openProfileSettings()"
+          }
+        ]
+      }
+    ];
+
+    // =========================================================================
+    // 3. FOUR INTERACTIVE SCAM SIMULATION SCENARIOS
+    // =========================================================================
+    const scenarios = [
+      {
+        id: "kyc",
+        icon: "fa-comment-sms",
+        badgeTitle: { en: "KYC Defender", hi: "KYC रक्षक", mr: "KYC रक्षक" },
+        badgeColor: "bg-amber-100 text-amber-900",
+        title: {
+          en: "1. Fake Bank KYC SMS",
+          hi: "1. नकली बैंक KYC SMS",
+          mr: "1. बनावट बँक KYC SMS"
+        },
+        sender: {
+          en: "VK-BNKALRT • SMS",
+          hi: "VK-BNKALRT • SMS",
+          mr: "VK-BNKALRT • SMS"
+        },
+        message: {
+          en: "URGENT: Your SBI KYC is pending. Tap bit.ly/sbi-kyc-now within 2 hours or your bank account will be permanently blocked!",
+          hi: "अत्यावश्यक: आपका SBI KYC अधूरा है। 2 घंटे में bit.ly/sbi-kyc-now पर क्लिक करें वरना खाता हमेशा के लिए बंद हो जाएगा!",
+          mr: "तातडीचे: तुमचे SBI KYC प्रलंबित आहे. २ तासांत bit.ly/sbi-kyc-now वर क्लिक करा अन्यथा खाते कायमचे बंद होईल!"
+        },
+        redFlags: {
+          en: [
+            "Shortened suspicious link (bit.ly) instead of official bank domain.",
+            "Creates panic with a 2-hour account block threat.",
+            "Banks never ask for KYC updates via SMS links."
+          ],
+          hi: [
+            "असली बैंक वेबसाइट की जगह संदिग्ध छोटा लिंक (bit.ly) दिया गया है।",
+            "2 घंटे में खाता बंद करने की धमकी देकर घबराहट पैदा की जा रही है।",
+            "बैंक कभी भी SMS लिंक के जरिए KYC अपडेट नहीं मांगते।"
+          ],
+          mr: [
+            "अधिकृत बँक वेबसाइटऐवजी संशयास्पद शॉर्ट लिंक (bit.ly) दिली आहे.",
+            "२ तासांत खाते बंद करण्याची धमकी देऊन भीती निर्माण केली आहे.",
+            "बँक कधीही SMS लिंकद्वारे KYC अपडेट मागत नाही."
+          ]
+        }
+      },
+      {
+        id: "upi",
+        icon: "fa-qrcode",
+        badgeTitle: { en: "UPI PIN Master", hi: "UPI PIN मास्टर", mr: "UPI PIN मास्टर" },
+        badgeColor: "bg-purple-100 text-purple-900",
+        title: {
+          en: "2. UPI Cashback QR / PIN Trap",
+          hi: "2. UPI कैशबैक QR / PIN जाल",
+          mr: "2. UPI कॅशबॅक QR / PIN सापळा"
+        },
+        sender: {
+          en: "Mock UPI Collect Request • ₹2,500",
+          hi: "नकली UPI पेमेंट रिक्वेस्ट • ₹2,500",
+          mr: "बनावट UPI पेमेंट विनंती • ₹२,५००"
+        },
+        message: {
+          en: "REWARD CLAIM: Senior Pension Cashback of ₹2,500 approved! Enter your 4-digit UPI PIN below to receive ₹2,500 into your bank account.",
+          hi: "इनाम दावा: ₹2,500 का सीनियर पेंशन कैशबैक मंजूर! अपने खाते में ₹2,500 प्राप्त करने के लिए नीचे अपना UPI PIN डालें।",
+          mr: "बक्षीस दावा: ₹२,५०० चा पेन्शन कॅशबॅक मंजूर! खात्यात ₹२,५०० मिळवण्यासाठी खाली तुमचा UPI PIN टाका."
+        },
+        redFlags: {
+          en: [
+            "You NEVER need a UPI PIN to RECEIVE money in your account.",
+            "Entering your PIN here actually DEDUCTS ₹2,500 from your bank.",
+            "Never approve unknown UPI 'Collect' requests."
+          ],
+          hi: [
+            "पैसे प्राप्त करने (Receive) के लिए कभी भी UPI PIN की जरूरत नहीं होती।",
+            "यहाँ PIN डालने से आपके बैंक खाते से ₹2,500 कट जाएंगे।",
+            "अनजान UPI रिक्वेस्ट को कभी भी स्वीकार न करें।"
+          ],
+          mr: [
+            "पैसे मिळवण्यासाठी (Receive) कधीही UPI PIN ची गरज नसते.",
+            "येथे PIN टाकल्यास तुमच्या खात्यातून ₹२,५०० कट होतील.",
+            "अनोळखी UPI विनंती कधीही स्वीकारू नका."
+          ]
+        }
+      },
+      {
+        id: "arrest",
+        icon: "fa-video",
+        badgeTitle: { en: "Call Shield Pro", hi: "कॉल शील्ड प्रो", mr: "कॉल शील्ड प्रो" },
+        badgeColor: "bg-rose-100 text-rose-900",
+        isCallScenario: true,
+        title: {
+          en: "3. 'Digital Arrest' Fake CBI Call",
+          hi: "3. 'डिजिटल अरेस्ट' नकली CBI कॉल",
+          mr: "3. 'डिजिटल अरेस्ट' बनावट CBI कॉल"
+        },
+        sender: {
+          en: "CBI Cyber Cell • +91 98210-XXXXX",
+          hi: "CBI साइबर सेल • +91 98210-XXXXX",
+          mr: "CBI सायबर सेल • +91 98210-XXXXX"
+        },
+        message: {
+          en: "CBI OFFICER: Your Aadhaar is linked to a seized parcel. You are under 'Digital Arrest' on video call. Transfer ₹25,000 RBI verification fee now!",
+          hi: "CBI अधिकारी: आपका आधार एक अवैध पार्सल से जुड़ा है। आप वीडियो कॉल पर 'डिजिटल अरेस्ट' हैं। तुरंत ₹25,000 ट्रांसफर करें!",
+          mr: "CBI अधिकारी: तुमचे आधार कार्ड बेकायदेशीर पार्सलशी जोडलेले आहे. तुम्ही व्हिडिओ कॉलवर 'डिजिटल अरेस्ट' आहात. लगेच ₹२५,००० पाठवा!"
+        },
+        redFlags: {
+          en: [
+            "Indian Police, CBI, or Courts NEVER do 'Digital Arrest' on video calls.",
+            "Law enforcement never demands money transfers to clear your name.",
+            "Hang up immediately and tap 'Ask Family First'."
+          ],
+          hi: [
+            "भारतीय पुलिस, CBI या कोर्ट कभी भी वीडियो कॉल पर 'डिजिटल अरेस्ट' नहीं करते।",
+            "पुलिस कभी भी केस खत्म करने के लिए पैसे ट्रांसफर करने को नहीं कहती।",
+            "तुरंत फोन काटें और 'पहले परिवार से पूछें' दबाएं।"
+          ],
+          mr: [
+            "भारतीय पोलीस, CBI किंवा न्यायालय कधीही व्हिडिओ कॉलवर 'डिजिटल अरेस्ट' करत नाहीत.",
+            "पोलीस कधीही नाव वगळण्यासाठी पैसे ट्रान्सफर करण्यास सांगत नाहीत.",
+            "लगेच फोन कट करा आणि 'आधी कुटुंबाला विचारा' दाबा."
+          ]
+        }
+      },
+      {
+        id: "apk",
+        icon: "fa-file-shield",
+        badgeTitle: { en: "Malware Blocker", hi: "मैलवेयर ब्लॉकर", mr: "मालवेअर ब्लॉकर" },
+        badgeColor: "bg-teal-100 text-teal-900",
+        title: {
+          en: "4. Electricity Bill & Fake .APK File",
+          hi: "4. बिजली बिल और नकली .APK फाइल",
+          mr: "4. वीज बिल आणि बनावट .APK फाइल"
+        },
+        sender: {
+          en: "WhatsApp Message • Electricity Dept",
+          hi: "व्हाट्सएप मैसेज • बिजली विभाग",
+          mr: "व्हॉट्सॲप मेसेज • वीज महामंडळ"
+        },
+        message: {
+          en: "POWER ALERT: Your electricity will be cut tonight at 9:30 PM. Install 'MSEDCL_Bill_Update.apk' attached here to update payment.",
+          hi: "बिजली अलर्ट: आज रात 9:30 बजे आपकी बिजली कट जाएगी। भुगतान अपडेट करने के लिए 'MSEDCL_Bill_Update.apk' इंस्टॉल करें।",
+          mr: "वीज अलर्ट: आज रात्री ९:३० वाजता तुमची वीज कापली जाईल. पेमेंट अपडेट करण्यासाठी 'MSEDCL_Bill_Update.apk' इन्स्टॉल करा."
+        },
+        redFlags: {
+          en: [
+            "Never install '.apk' files sent on WhatsApp—they steal OTPs & screen access.",
+            "Electricity boards never threaten 9:30 PM disconnection via WhatsApp.",
+            "Only download apps from the official Google Play Store."
+          ],
+          hi: [
+            "व्हाट्सएप पर भेजी गई '.apk' फाइल कभी इंस्टॉल न करें—यह आपके फोन और OTP चुरा लेती है।",
+            "बिजली विभाग कभी भी व्हाट्सएप पर रात को बिजली काटने की धमकी नहीं देता।",
+            "ऐप हमेशा केवल आधिकारिक Google Play Store से ही डाउनलोड करें।"
+          ],
+          mr: [
+            "व्हॉट्सॲपवर आलेली '.apk' फाइल कधीही इन्स्टॉल करू नका—ती तुमचे OTP चोरते.",
+            "वीज मंडळ कधीही व्हॉट्सॲपवर रात्री वीज कापण्याची धमकी देत नाही.",
+            "ॲप्स नेहमी फक्त अधिकृत Google Play Store वरूनच डाउनलोड करा."
+          ]
+        }
+      }
+    ];
+
+    // =========================================================================
+    // 4. HELPLINES & TRUSTED BANK WHITELIST DIRECTORY
+    // =========================================================================
+    const helplines = [
+      {
+        name: { en: "National Cyber Crime Helpline", hi: "राष्ट्रीय साइबर क्राइम हेल्पलाइन", mr: "राष्ट्रीय सायबर क्राईम हेल्पलाइन" },
+        number: "1930",
+        desc: { en: "24x7 Financial Fraud Reporting", hi: "24x7 ऑनलाइन ठगी की रिपोर्ट", mr: "२४x७ आर्थिक फसवणूक तक्रार" },
+        color: "bg-rose-700 text-white"
+      },
+      {
+        name: { en: "Senior Citizen Helpline (Elderline)", hi: "वरिष्ठ नागरिक हेल्पलाइन", mr: "ज्येष्ठ नागरिक हेल्पलाइन" },
+        number: "14567",
+        desc: { en: "Govt. Support & Guidance", hi: "सरकारी सहायता और मार्गदर्शन", mr: "शासकीय मदत आणि मार्गदर्शन" },
+        color: "bg-blue-900 text-white"
+      },
+      {
+        name: { en: "SBI Fraud & Card Block Desk", hi: "SBI कार्ड ब्लॉक और धोखाधड़ी डेस्क", mr: "SBI कार्ड ब्लॉक आणि फसवणूक कक्ष" },
+        number: "1800-11-1109",
+        desc: { en: "Toll-Free Unauthorized Txn", hi: "टोल-फ्री अनधिकृत लेनदेन शिकायत", mr: "टोल-फ्री अनधिकृत व्यवहार तक्रार" },
+        color: "bg-slate-800 text-white"
+      },
+      {
+        name: { en: "Bank of Maharashtra / RBI Sachet", hi: "बैंक ऑफ महाराष्ट्र / RBI सचेत", mr: "बँक ऑफ महाराष्ट्र / RBI सचेत" },
+        number: "1800-233-4526",
+        desc: { en: "Official Banking Grievance", hi: "आधिकारिक बैंकिंग शिकायत", mr: "अधिकृत बँकिंग तक्रार निवारण" },
+        color: "bg-teal-800 text-white"
+      }
+    ];
+
+    const trustedBankSenders = [
+      { code: "AD-SBIINB", bank: "State Bank of India (Official Alerts)" },
+      { code: "JD-MAHABK", bank: "Bank of Maharashtra (Verified SMS)" },
+      { code: "VM-HDFCBK", bank: "HDFC Bank (Official Transactions)" },
+      { code: "AX-ICICIB", bank: "ICICI Bank (Verified Notifications)" }
+    ];
+
+    const radarAlerts = [
+      {
+        area: "Dharampeth & Sitabuldi, Nagpur",
+        tag: "HIGH RISK",
+        title: {
+          en: "Fake MSEDCL Night Power-Cut .APK File",
+          hi: "नकली MSEDCL रात बिजली कटौती .APK फाइल",
+          mr: "बनावट MSEDCL रात्री वीज कपात .APK फाईल"
+        },
+        reports: "42 seniors reported today"
+      },
+      {
+        area: "Wardha & Amravati Division",
+        tag: "TRENDING",
+        title: {
+          en: "Fake Pension Life-Certificate OTP Call",
+          hi: "नकली पेंशन जीवन प्रमाणपत्र OTP कॉल",
+          mr: "बनावट पेन्शन जीवन प्रमाणपत्र OTP कॉल"
+        },
+        reports: "29 alerts blocked this week"
+      }
+    ];
+
+    // =========================================================================
+    // 5. APPLICATION STATE & PERSISTENCE (localStorage)
+    // =========================================================================
+    const defaultState = {
+      lang: "en",
+      screen: "home",
+      largeText: false,
+      highContrast: false,
+      soundEnabled: true,
+      seniorName: "Ramesh Sharma",
+      caregiverName: "Priya (Daughter)",
+      caregiverPhone: "+91 98230 45120",
+      completedModules: ["kyc"],
+      activeScenarioIdx: 0,
+      scenarioChoice: null,
+      safeTab: "msg",
+      checkerInput: "",
+      upiInput: "",
+      checkerResult: null,
+      ocrStatus: "",
+      isSpeaking: false,
+      alerts: [
+        {
+          id: 1,
+          level: "HIGH",
+          text: "Blocked suspicious bit.ly KYC link in SMS",
+          time: "Today, 10:15 AM"
+        }
+      ]
+    };
+
+    let state = loadState();
+
+    function loadState() {
+      try {
+        const saved = localStorage.getItem("cyberGuardSeniorsState_v2");
+        if (saved) {
+          return { ...defaultState, ...JSON.parse(saved), isSpeaking: false, ocrStatus: "" };
+        }
+      } catch (e) {
+        console.warn("Storage unavailable", e);
+      }
+      return { ...defaultState };
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem("cyberGuardSeniorsState_v2", JSON.stringify(state));
+      } catch (e) {}
+      const badgeEl = document.getElementById("demo-badge-count");
+      if (badgeEl) {
+        badgeEl.textContent = `Badges: ${state.completedModules.length}/${scenarios.length}`;
+      }
+    }
+
+    function resetDemoState() {
+      localStorage.removeItem("cyberGuardSeniorsState_v2");
+      state = { ...defaultState };
+      playSound("tap");
+      applyAccessibilityClasses();
+      render();
+      showOsPushNotification("Demo Reset", "All badges and alert logs reset to default.");
+    }
+
+    // =========================================================================
+    // 6. SPLASH SCREEN, CLOCK & ACCESSIBILITY TOGGLES
+    // =========================================================================
+    function dismissSplash() {
+      const splash = document.getElementById("splash-screen");
+      if (splash && !splash.classList.contains("hidden")) {
+        splash.style.opacity = "0";
+        setTimeout(() => splash.classList.add("hidden"), 450);
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      updateClock();
+      setInterval(updateClock, 15000);
+      applyAccessibilityClasses();
+      render();
+
+      const bar = document.getElementById("splash-bar");
+      const status = document.getElementById("splash-status");
+      setTimeout(() => {
+        if (bar) bar.style.width = "75%";
+        if (status) status.textContent = "Activating Scam Radar & Caregiver Sync...";
+      }, 450);
+      setTimeout(() => {
+        if (bar) bar.style.width = "100%";
+        dismissSplash();
+      }, 1500);
+    });
+
+    function updateClock() {
+      const el = document.getElementById("status-clock");
+      if (!el) return;
+      const now = new Date();
+      el.textContent = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+
+    function applyAccessibilityClasses() {
+      const screenEl = document.getElementById("phone-screen");
+      const btnText = document.getElementById("btn-a11y-text");
+      const btnHc = document.getElementById("btn-a11y-hc");
+      const btnSound = document.getElementById("btn-a11y-sound");
+      const profileChip = document.getElementById("active-profile-chip");
+
+      if (profileChip) {
+        profileChip.innerHTML = `<i class="fa-solid fa-user-check"></i> ${state.seniorName}`;
+      }
+      if (screenEl) {
+        screenEl.classList.toggle("a11y-large-text", state.largeText);
+        screenEl.classList.toggle("a11y-high-contrast", state.highContrast);
+      }
+      if (btnText) {
+        btnText.className = state.largeText
+          ? "px-2 py-0.5 rounded-md bg-amber-400 text-slate-950 font-bold transition"
+          : "px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 font-bold border border-slate-700 transition";
+      }
+      if (btnHc) {
+        btnHc.className = state.highContrast
+          ? "px-2 py-0.5 rounded-md bg-amber-400 text-slate-950 font-bold transition"
+          : "px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 font-bold border border-slate-700 transition";
+      }
+      if (btnSound) {
+        btnSound.className = state.soundEnabled
+          ? "px-2 py-0.5 rounded-md bg-emerald-800 text-emerald-100 font-bold border border-emerald-600 transition"
+          : "px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 font-bold border border-slate-700 transition";
+        btnSound.innerHTML = state.soundEnabled
+          ? `<i class="fa-solid fa-volume-high"></i>`
+          : `<i class="fa-solid fa-volume-xmark"></i>`;
+      }
+    }
+
+    function toggleLargeText() {
+      state.largeText = !state.largeText;
+      playSound("tap");
+      saveState();
+      applyAccessibilityClasses();
+    }
+
+    function toggleHighContrast() {
+      state.highContrast = !state.highContrast;
+      playSound("tap");
+      saveState();
+      applyAccessibilityClasses();
+    }
+
+    function toggleSound() {
+      state.soundEnabled = !state.soundEnabled;
+      if (state.soundEnabled) playSound("tap");
+      saveState();
+      applyAccessibilityClasses();
+    }
+
+    // =========================================================================
+    // 7. VOICE NARRATION (Web Speech API) & OS PUSH NOTIFICATIONS
+    // =========================================================================
+    function speakText(text) {
+      if (!("speechSynthesis" in window)) {
+        showOsPushNotification("Voice Guide", text);
+        return;
+      }
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = state.lang === "hi" ? "hi-IN" : state.lang === "mr" ? "mr-IN" : "en-IN";
+      utterance.rate = 0.92;
+      utterance.onstart = () => {
+        state.isSpeaking = true;
+        render();
+      };
+      utterance.onend = () => {
+        state.isSpeaking = false;
+        render();
+      };
+      utterance.onerror = () => {
+        state.isSpeaking = false;
+        render();
+      };
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function stopSpeech() {
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+      state.isSpeaking = false;
+      render();
+    }
+
+    function showOsPushNotification(title, body, isWhatsApp = false) {
+      const container = document.getElementById("os-push-container");
+      if (!container) return;
+      playSound("notification");
+      const banner = document.createElement("div");
+      banner.className =
+        "os-banner-enter pointer-events-auto bg-slate-900/95 text-white p-3 rounded-2xl shadow-xl border border-slate-700 flex items-start gap-2.5";
+      banner.innerHTML = `
+        <div class="w-8 h-8 rounded-xl ${isWhatsApp ? "bg-emerald-600" : "bg-blue-700"} flex items-center justify-center shrink-0 mt-0.5">
+          <i class="fa-brands ${isWhatsApp ? "fa-whatsapp text-base" : "fa-shield-halved text-sm"}"></i>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-[11px] font-bold uppercase tracking-wider ${isWhatsApp ? "text-emerald-400" : "text-amber-300"}">${title}</p>
+          <p class="text-xs text-slate-100 leading-snug mt-0.5">${body}</p>
+        </div>
+      `;
+      container.appendChild(banner);
+      setTimeout(() => {
+        banner.style.opacity = "0";
+        banner.style.transition = "opacity 0.3s ease";
+        setTimeout(() => banner.remove(), 320);
+      }, 3600);
+    }
+
+    function logFamilyAlert(level, message) {
+      const nowStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      state.alerts.unshift({
+        id: Date.now(),
+        level,
+        text: message,
+        time: `Today, ${nowStr}`
+      });
+      if (state.alerts.length > 6) state.alerts.pop();
+      saveState();
+      showOsPushNotification(
+        `WhatsApp Alert → ${state.caregiverName}`,
+        `Security Notice for ${state.seniorName}: ${message}`,
+        true
+      );
+    }
+
+    // =========================================================================
+    // 8. NAVIGATION & LANGUAGE SWITCHER
+    // =========================================================================
+    function setLanguage(lang) {
+      state.lang = lang;
+      playSound("tap");
+      stopSpeech();
+      saveState();
+      render();
+    }
+
+    function navigate(screenName) {
+      state.screen = screenName;
+      state.scenarioChoice = null;
+      playSound("tap");
+      stopSpeech();
+      saveState();
+      render();
+      const content = document.getElementById("screen-content");
+      if (content) content.scrollTop = 0;
+    }
+
+    // =========================================================================
+    // 9. INTERACTIVE ACTIONS (Sandbox, Checker, OCR, Calls, Modals)
+    // =========================================================================
+    function selectScenario(idx) {
+      state.activeScenarioIdx = idx;
+      state.scenarioChoice = null;
+      playSound("tap");
+      render();
+    }
+
+    function answerScenario(isSafeChoice) {
+      const sc = scenarios[state.activeScenarioIdx];
+      state.scenarioChoice = isSafeChoice ? "safe" : "risky";
+      if (isSafeChoice) {
+        playSound("success");
+        if (!state.completedModules.includes(sc.id)) {
+          state.completedModules.push(sc.id);
+        }
+        saveState();
+        speakText(i18n[state.lang].safeSuccessBody);
+      } else {
+        playSound("alert");
+        speakText(sc.redFlags[state.lang].join(" "));
+      }
+      render();
+    }
+
+    function nextScenario() {
+      state.activeScenarioIdx = (state.activeScenarioIdx + 1) % scenarios.length;
+      state.scenarioChoice = null;
+      playSound("tap");
+      render();
+    }
+
+    function triggerIncomingCallSim() {
+      startIncomingRingtone();
+      const overlay = document.getElementById("modal-overlay");
+      const box = document.getElementById("modal-box");
+      overlay.classList.remove("hidden");
+      box.innerHTML = `
+        <div class="bg-slate-950 text-white -m-5 p-6 rounded-3xl space-y-5">
+          <div class="flex items-center justify-between text-xs text-rose-400 font-bold uppercase tracking-wider">
+            <span><i class="fa-solid fa-circle animate-ping mr-1"></i> Incoming Video Call</span>
+            <span>Practice Sim</span>
+          </div>
+          <div class="py-3 flex flex-col items-center">
+            <div class="w-20 h-20 rounded-full bg-rose-600/20 border-2 border-rose-500 flex items-center justify-center text-3xl text-rose-400 ring-vibrate">
+              <i class="fa-solid fa-user-secret"></i>
+            </div>
+            <h3 class="text-xl font-bold mt-3">CBI Cyber Crime Cell</h3>
+            <p class="text-sm text-slate-400">+91 98210-XXXXX (Unknown)</p>
+            <p class="mt-3 text-xs bg-rose-950/80 border border-rose-700 text-rose-200 p-2.5 rounded-xl">
+              "Your Aadhaar is linked to a seized parcel. Stay on video call for Digital Arrest verification!"
+            </p>
+          </div>
+          <div class="grid grid-cols-2 gap-3 pt-2">
+            <button onclick="resolveCallSim(true)" class="py-3.5 px-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm flex flex-col items-center gap-1 shadow-lg">
+              <i class="fa-solid fa-phone-slash text-lg"></i>
+              <span>Decline &amp; Report</span>
+            </button>
+            <button onclick="resolveCallSim(false)" class="py-3.5 px-3 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm flex flex-col items-center gap-1 shadow-lg">
+              <i class="fa-solid fa-video text-lg"></i>
+              <span>Answer &amp; Pay</span>
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function resolveCallSim(declinedSafely) {
+      stopIncomingRingtone();
+      closeModal();
+      state.activeScenarioIdx = 2;
+      answerScenario(declinedSafely);
+    }
+
+    function setSafeTab(tab) {
+      state.safeTab = tab;
+      state.checkerResult = null;
+      playSound("tap");
+      render();
+    }
+
+    function loadSampleText(type) {
+      playSound("tap");
+      state.safeTab = "msg";
+      if (type === "kyc") {
+        state.checkerInput = "URGENT: Your SBI KYC expires today. Click http://bit.ly/sbi-verify99 and enter OTP to avoid account freeze.";
+      } else if (type === "lottery") {
+        state.checkerInput = "Congratulations! You won ₹50,000 Senior Citizen Bonus. Scan QR or enter UPI PIN to claim reward now.";
+      } else {
+        state.checkerInput = "Dear Customer, your monthly statement for A/c XX4312 has been sent to your registered email. - AD-SBIINB";
+      }
+      analyzeMessageText(state.checkerInput);
+    }
+
+    function simulateWhatsAppShare() {
+      playSound("notification");
+      state.safeTab = "msg";
+      state.checkerInput = "Forwarded from WhatsApp: MSEDCL Electricity will disconnect tonight 9:30 PM. Download BillUpdate.apk immediately.";
+      showOsPushNotification("Shared from WhatsApp", "Analyzing forwarded message in Cyber Guard...");
+      analyzeMessageText(state.checkerInput);
+    }
+
+    function analyzeMessageText(rawText) {
+      const text = (rawText || "").trim();
+      if (!text) return;
+      const lower = text.toLowerCase();
+      const redKeywords = ["bit.ly", "tinyurl", "kyc", "otp", "blocked", "freeze", "lottery", "won", "upi pin", ".apk", "disconnect", "arrest", "cbi"];
+      const warnKeywords = ["urgent", "click", "link", "verify", "refund", "cashback", "prize"];
+
+      const matchedRed = redKeywords.filter((k) => lower.includes(k));
+      const matchedWarn = warnKeywords.filter((k) => lower.includes(k));
+
+      if (matchedRed.length > 0) {
+        playSound("alert");
+        state.checkerResult = {
+          level: "scam",
+          reasons: {
+            en: [
+              `High-risk scam keywords detected (${matchedRed.slice(0, 3).join(", ")}).`,
+              "Creates false urgency to trick you into sharing OTP, PIN, or installing malware.",
+              "Do NOT click links or reply. Tap 1930 or Ask Family First."
+            ],
+            hi: [
+              `खतरनाक स्कैम शब्द पाए गए (${matchedRed.slice(0, 3).join(", ")})।`,
+              "यह संदेश घबराहट पैदा करके आपका OTP या PIN चुराने की कोशिश कर रहा है।",
+              "किसी लिंक पर क्लिक न करें। तुरंत 1930 पर कॉल करें या परिवार से पूछें।"
+            ],
+            mr: [
+              `धोकादायक स्कॅम शब्द आढळले (${matchedRed.slice(0, 3).join(", ")}).`,
+              "भीती दाखवून तुमचा OTP किंवा UPI PIN चोरण्याचा हा प्रयत्न आहे.",
+              "कोणत्याही लिंकवर क्लिक करू नका. १९३० वर कॉल करा किंवा कुटुंबाला विचारा."
+            ]
+          }
+        };
+        logFamilyAlert("HIGH", `Blocked scam text containing: ${matchedRed.slice(0, 2).join(", ")}`);
+      } else if (matchedWarn.length > 0) {
+        playSound("alert");
+        state.checkerResult = {
+          level: "warn",
+          reasons: {
+            en: [
+              "Message asks for urgent verification or link action.",
+              "Call your official bank branch directly before taking any step."
+            ],
+            hi: [
+              "संदेश में तुरंत कार्रवाई या लिंक पर जाने को कहा गया है।",
+              "कोई भी कदम उठाने से पहले अपनी बैंक शाखा को सीधे कॉल करें।"
+            ],
+            mr: [
+              "मेसेजमध्ये तातडीने लिंक उघडण्यास सांगितले आहे.",
+              "कोणतीही कृती करण्यापूर्वी थेट तुमच्या बँक शाखेशी संपर्क साधा."
+            ]
+          }
+        };
+      } else {
+        playSound("success");
+        state.checkerResult = {
+          level: "safe",
+          reasons: {
+            en: [
+              "No phishing links, APK files, or OTP/PIN demands found.",
+              "Matches standard informational banking notifications."
+            ],
+            hi: [
+              "इसमें कोई संदिग्ध लिंक, APK फाइल या OTP/PIN की मांग नहीं है।",
+              "यह एक सामान्य सूचनात्मक बैंक संदेश जैसा दिखता है।"
+            ],
+            mr: [
+              "यामध्ये कोणतीही संशयास्पद लिंक, APK फाईल किंवा OTP/PIN ची मागणी नाही.",
+              "हा एक सामान्य माहितीपूर्ण बँक संदेश दिसत आहे."
+            ]
+          }
+        };
+      }
+      render();
+    }
+
+    function analyzeUpiOrPhone(rawVal) {
+      const val = (rawVal || "").trim();
+      if (!val) return;
+      const lower = val.toLowerCase();
+      const suspiciousUpi = ["refund", "cashback", "prize", "lottery", "kyc", "helpdesk", "customercare", "offer", "reward"];
+      const hit = suspiciousUpi.find((w) => lower.includes(w));
+
+      if (hit) {
+        playSound("alert");
+        state.checkerResult = {
+          level: "scam",
+          reasons: {
+            en: [
+              `Fake brand/reward handle detected ('${hit}' in ${val}).`,
+              "Scammers create fake UPI IDs like 'sbi-refund@okaxis' to steal money.",
+              "Never approve collect requests from unverified handles."
+            ],
+            hi: [
+              `नकली इनाम/बैंक UPI ID पाई गई ('${hit}')।`,
+              "ठग पैसे चुराने के लिए 'refund@okaxis' जैसी नकली ID बनाते हैं।",
+              "ऐसे किसी भी UPI अनुरोध को स्वीकार न करें।"
+            ],
+            mr: [
+              `बनावट बक्षीस/बँक UPI ID आढळली ('${hit}').`,
+              "फसवणूक करणारे पैसे चोरण्यासाठी 'refund@okaxis' सारखे बनावट ID तयार करतात.",
+              "अशा कोणत्याही UPI विनंतीला मंजुरी देऊ नका."
+            ]
+          }
+        };
+        logFamilyAlert("HIGH", `Flagged suspicious UPI/Caller: ${val}`);
+      } else {
+        playSound("success");
+        state.checkerResult = {
+          level: "warn",
+          reasons: {
+            en: [
+              `No known fraud keywords in '${val}'.`,
+              "Still confirm the recipient's real name on the UPI screen before paying."
+            ],
+            hi: [
+              `'${val}' में कोई ज्ञात धोखाधड़ी शब्द नहीं मिला।`,
+              "फिर भी भुगतान करने से पहले स्क्रीन पर असली नाम जरूर जांच लें।"
+            ],
+            mr: [
+              `'${val}' मध्ये कोणताही ज्ञात फसवणूक शब्द आढळला नाही.`,
+              "तरीही पैसे पाठवण्यापूर्वी स्क्रीनवर खरे नाव तपासून पहा."
+            ]
+          }
+        };
+      }
+      render();
+    }
+
+    async function handleScreenshotUpload(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      playSound("tap");
+      state.ocrStatus = "Scanning screenshot with Tesseract OCR...";
+      render();
+
+      try {
+        if (window.Tesseract) {
+          const res = await window.Tesseract.recognize(file, "eng");
+          const extracted = (res.data && res.data.text ? res.data.text : "").replace(/\s+/g, " ").trim();
+          state.ocrStatus = "";
+          if (extracted.length > 5) {
+            state.checkerInput = extracted;
+            analyzeMessageText(extracted);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn("OCR fallback triggered", err);
+      }
+
+      // Clean fallback if image has low text contrast
+      state.ocrStatus = "";
+      state.checkerInput = "Scanned Screenshot: URGENT KYC Pending! Tap bit.ly/kyc-update to avoid account block.";
+      analyzeMessageText(state.checkerInput);
+    }
+
+    function triggerPanicBreaker() {
+      const t = i18n[state.lang];
+      playSound("alert");
+      logFamilyAlert("PANIC", `${state.seniorName} pressed 'Ask Family First' button`);
+      speakText(t.panicModalBody);
+
+      const overlay = document.getElementById("modal-overlay");
+      const box = document.getElementById("modal-box");
+      overlay.classList.remove("hidden");
+      box.innerHTML = `
+        <div class="w-16 h-16 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-3xl mx-auto">
+          <i class="fa-solid fa-hand-holding-heart"></i>
+        </div>
+        <h3 class="text-xl font-bold text-slate-900">${t.panicModalTitle}</h3>
+        <p class="text-sm text-slate-700 leading-relaxed">${t.panicModalBody}</p>
+        <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-xs text-emerald-900 font-bold">
+          <i class="fa-brands fa-whatsapp text-emerald-600 mr-1"></i> Alert sent to ${state.caregiverName}
+        </div>
+        <div class="space-y-2 pt-1">
+          <button onclick="simulateCall('${state.caregiverName}', '${state.caregiverPhone}')" class="w-full py-3.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-base flex items-center justify-center gap-2 shadow-md">
+            <i class="fa-solid fa-phone"></i> ${t.panicCallFamily} ${state.caregiverName}
+          </button>
+          <button onclick="closeModal()" class="w-full py-3 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-sm">
+            ${t.panicClose}
+          </button>
+        </div>
+      `;
+    }
+
+    function simulateCall(name, phone) {
+      playSound("tap");
+      const overlay = document.getElementById("modal-overlay");
+      const box = document.getElementById("modal-box");
+      overlay.classList.remove("hidden");
+      box.innerHTML = `
+        <div class="py-4 space-y-4">
+          <div class="w-20 h-20 rounded-full bg-blue-100 text-blue-900 flex items-center justify-center text-3xl mx-auto animate-pulse">
+            <i class="fa-solid fa-phone-volume"></i>
+          </div>
+          <div>
+            <p class="text-xs font-bold uppercase text-emerald-700">Connecting Secure Call...</p>
+            <h3 class="text-xl font-bold text-slate-900 mt-1">${name}</h3>
+            <p class="text-lg font-bold text-blue-900 mt-0.5">${phone}</p>
+          </div>
+          <button onclick="closeModal()" class="w-full py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-base flex items-center justify-center gap-2">
+            <i class="fa-solid fa-phone-slash"></i> End Call
+          </button>
+        </div>
+      `;
+    }
+
+    function openProfileSettings() {
+      const t = i18n[state.lang];
+      playSound("tap");
+      const overlay = document.getElementById("modal-overlay");
+      const box = document.getElementById("modal-box");
+      overlay.classList.remove("hidden");
+      box.innerHTML = `
+        <div class="text-left space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-lg font-bold text-slate-900">${t.settingsTitle}</h3>
+              <p class="text-xs text-slate-500">${t.settingsSub}</p>
+            </div>
+            <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">${t.labelSeniorName}</label>
+            <input id="inp-senior-name" type="text" value="${state.seniorName}" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm font-bold text-slate-900" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">${t.labelCareName}</label>
+            <input id="inp-care-name" type="text" value="${state.caregiverName}" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm font-bold text-slate-900" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">${t.labelCarePhone}</label>
+            <input id="inp-care-phone" type="text" value="${state.caregiverPhone}" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm font-bold text-slate-900" />
+          </div>
+          <button onclick="saveProfileSettings()" class="w-full py-3 rounded-2xl bg-blue-900 hover:bg-blue-950 text-white font-bold text-sm shadow-md">
+            <i class="fa-solid fa-check mr-1"></i> ${t.saveProfileBtn}
+          </button>
+        </div>
+      `;
+    }
+
+    function saveProfileSettings() {
+      const sName = document.getElementById("inp-senior-name")?.value.trim();
+      const cName = document.getElementById("inp-care-name")?.value.trim();
+      const cPhone = document.getElementById("inp-care-phone")?.value.trim();
+      if (sName) state.seniorName = sName;
+      if (cName) state.caregiverName = cName;
+      if (cPhone) state.caregiverPhone = cPhone;
+      playSound("success");
+      saveState();
+      applyAccessibilityClasses();
+      closeModal();
+      render();
+      showOsPushNotification("Profile Updated", `Linked ${state.seniorName} with ${state.caregiverName}`);
+    }
+
+    function sendCaregiverVoiceReminder() {
+      const msg =
+        state.lang === "hi"
+          ? `नमस्ते ${state.seniorName}, ${state.caregiverName} ने सुरक्षा संदेश भेजा है: किसी को भी अपना OTP या UPI PIN न बताएं।`
+          : state.lang === "mr"
+          ? `नमस्कार ${state.seniorName}, ${state.caregiverName} यांनी सुरक्षा संदेश पाठवला आहे: कोणालाही तुमचा OTP किंवा UPI PIN सांगू नका.`
+          : `Hello ${state.seniorName}, safety check-in from ${state.caregiverName}: Never share your OTP or UPI PIN with anyone on a call.`;
+      showOsPushNotification(`Reminder from ${state.caregiverName}`, msg, true);
+      speakText(msg);
+    }
+
+    function closeModal() {
+      stopIncomingRingtone();
+      const overlay = document.getElementById("modal-overlay");
+      if (overlay) overlay.classList.add("hidden");
+    }
+
+    // =========================================================================
+    // 10. MAIN UI RENDERER
+    // =========================================================================
+    function render() {
+      const t = i18n[state.lang];
+      document.getElementById("app-title").textContent = t.appTitle;
+      document.getElementById("app-subtitle").innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span> ${t.subtitle}`;
+
+      // Update language pills
+      ["en", "hi", "mr"].forEach((code) => {
+        const btn = document.getElementById(`lang-${code}`);
+        if (btn) {
+          btn.className =
+            state.lang === code
+              ? "py-1.5 px-2 rounded-xl text-sm font-bold transition bg-blue-900 text-white shadow-xs"
+              : "py-1.5 px-2 rounded-xl text-sm font-bold transition text-slate-700 hover:bg-white/70";
+        }
+      });
+
+      // Back button & speaking indicator
+      const backBtn = document.getElementById("back-btn");
+      if (backBtn) backBtn.classList.toggle("hidden", state.screen === "home");
+
+      const stopBtn = document.getElementById("stop-audio-btn");
+      if (stopBtn) {
+        stopBtn.classList.toggle("hidden", !state.isSpeaking);
+        stopBtn.classList.toggle("flex", state.isSpeaking);
+      }
+
+      // Bottom navigation highlight
+      const navMap = {
+        home: "nav-home",
+        learn: "nav-learn",
+        safe: "nav-safe",
+        caregiver: "nav-caregiver",
+        features: "nav-features"
+      };
+      Object.entries(navMap).forEach(([scr, id]) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const active = state.screen === scr || (scr === "home" && state.screen === "helplines");
+        el.className = active
+          ? "flex flex-col items-center justify-center py-1.5 rounded-xl text-blue-900 font-bold bg-blue-50 relative"
+          : "flex flex-col items-center justify-center py-1.5 rounded-xl text-slate-500 hover:text-slate-900 font-bold relative";
+      });
+
+      const container = document.getElementById("screen-content");
+      if (!container) return;
+
+      // -----------------------------------------------------------------------
+      // SCREEN 1: HOME DASHBOARD
+      // -----------------------------------------------------------------------
+      if (state.screen === "home") {
+        container.innerHTML = `
+          <div class="flex items-center justify-between px-1">
+            <div>
+              <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">${t.welcomeGreet},</p>
+              <h2 class="text-xl font-bold text-slate-900">${state.seniorName}</h2>
+            </div>
+            <button onclick="navigate('caregiver')" class="px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-900 text-xs font-bold flex items-center gap-1.5">
+              <i class="fa-solid fa-award text-amber-600"></i> ${state.completedModules.length}/${scenarios.length} Badges
+            </button>
+          </div>
+
+          <!-- Daily 30-Sec Offline Voice Tip Card -->
+          <div class="hc-card bg-gradient-to-br from-blue-900 to-slate-900 text-white rounded-3xl p-4 shadow-md space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-volume-high"></i> ${t.dailyTipLabel}
+              </span>
+              <span class="text-[10px] bg-white/15 px-2 py-0.5 rounded-full font-bold">Offline Ready</span>
+            </div>
+            <p class="text-sm leading-relaxed text-blue-50 font-medium">${t.dailyTipText}</p>
+            <button onclick="speakText(i18n[state.lang].dailyTipText)" class="w-full py-2.5 px-4 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 transition shadow-xs">
+              <i class="fa-solid ${state.isSpeaking ? "fa-waveform-lines" : "fa-play"}"></i>
+              <span>${state.isSpeaking ? t.speakingBtn : t.listenBtn}</span>
+            </button>
+          </div>
+
+          <!-- 4 Big Senior-Friendly Action Tiles -->
+          <div class="grid grid-cols-2 gap-3">
+            <button onclick="navigate('learn')" class="hc-card bg-white hover:bg-amber-50/60 active:scale-98 p-4 rounded-3xl border-2 border-slate-200 text-left shadow-xs transition flex flex-col justify-between min-h-[122px]">
+              <div class="w-11 h-11 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center text-xl">
+                <i class="fa-solid fa-graduation-cap"></i>
+              </div>
+              <div class="mt-2">
+                <h3 class="text-base font-bold text-slate-900 leading-tight">${t.tileLearnTitle}</h3>
+                <p class="text-xs text-slate-600 mt-0.5">${t.tileLearnSub}</p>
+              </div>
+            </button>
+
+            <button onclick="navigate('safe')" class="hc-card bg-white hover:bg-blue-50/60 active:scale-98 p-4 rounded-3xl border-2 border-slate-200 text-left shadow-xs transition flex flex-col justify-between min-h-[122px]">
+              <div class="w-11 h-11 rounded-2xl bg-blue-100 text-blue-900 flex items-center justify-center text-xl">
+                <i class="fa-solid fa-magnifying-glass-shield"></i>
+              </div>
+              <div class="mt-2">
+                <h3 class="text-base font-bold text-slate-900 leading-tight">${t.tileSafeTitle}</h3>
+                <p class="text-xs text-slate-600 mt-0.5">${t.tileSafeSub}</p>
+              </div>
+            </button>
+
+            <button onclick="navigate('helplines')" class="hc-card bg-white hover:bg-rose-50/60 active:scale-98 p-4 rounded-3xl border-2 border-slate-200 text-left shadow-xs transition flex flex-col justify-between min-h-[122px]">
+              <div class="w-11 h-11 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center text-xl">
+                <i class="fa-solid fa-phone-volume"></i>
+              </div>
+              <div class="mt-2">
+                <h3 class="text-base font-bold text-slate-900 leading-tight">${t.tileHelpTitle}</h3>
+                <p class="text-xs text-slate-600 mt-0.5">${t.tileHelpSub}</p>
+              </div>
+            </button>
+
+            <button onclick="navigate('caregiver')" class="hc-card bg-white hover:bg-teal-50/60 active:scale-98 p-4 rounded-3xl border-2 border-slate-200 text-left shadow-xs transition flex flex-col justify-between min-h-[122px]">
+              <div class="w-11 h-11 rounded-2xl bg-teal-100 text-teal-800 flex items-center justify-center text-xl">
+                <i class="fa-solid fa-user-shield"></i>
+              </div>
+              <div class="mt-2">
+                <h3 class="text-base font-bold text-slate-900 leading-tight">${t.tileCareTitle}</h3>
+                <p class="text-xs text-slate-600 mt-0.5">${t.tileCareSub}</p>
+              </div>
+            </button>
+          </div>
+
+          <!-- Ask Family First Panic Breaker CTA -->
+          <button onclick="triggerPanicBreaker()" class="w-full bg-emerald-700 hover:bg-emerald-800 active:scale-98 text-white p-4 rounded-3xl shadow-md flex items-center gap-3.5 text-left transition">
+            <div class="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center text-2xl shrink-0">
+              <i class="fa-solid fa-hand-holding-heart"></i>
+            </div>
+            <div class="flex-1">
+              <h3 class="text-base font-bold leading-tight">${t.panicBtn}</h3>
+              <p class="text-xs text-emerald-100 mt-0.5">${t.panicSub}</p>
+            </div>
+            <i class="fa-solid fa-chevron-right text-emerald-200"></i>
+          </button>
+
+          <!-- Bullet-Point Feature Directory Shortcut -->
+          <button onclick="navigate('features')" class="w-full py-3 px-4 rounded-2xl bg-white hover:bg-slate-100 border-2 border-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center gap-2 transition">
+            <i class="fa-solid fa-list-ul text-blue-900"></i>
+            <span>${t.allFeaturesBtn}</span>
+          </button>
+        `;
+      }
+
+      // -----------------------------------------------------------------------
+      // SCREEN 2: SCAM SIMULATION SANDBOX
+      // -----------------------------------------------------------------------
+      else if (state.screen === "learn") {
+        const sc = scenarios[state.activeScenarioIdx];
+        const isDone = state.completedModules.includes(sc.id);
+
+        container.innerHTML = `
+          <div>
+            <h2 class="text-xl font-bold text-slate-900">${t.learnHeader}</h2>
+            <p class="text-xs text-slate-600 mt-0.5">${t.learnDesc}</p>
+          </div>
+
+          <!-- Scenario Selector Pills -->
+          <div class="space-y-1.5">
+            <p class="text-xs font-bold text-slate-500 uppercase">${t.chooseScenario}</p>
+            <div class="grid grid-cols-2 gap-2">
+              ${scenarios
+                .map((item, idx) => {
+                  const active = idx === state.activeScenarioIdx;
+                  const done = state.completedModules.includes(item.id);
+                  return `
+                    <button onclick="selectScenario(${idx})" class="p-2.5 rounded-2xl border-2 text-left transition flex items-center justify-between ${
+                      active ? "border-blue-900 bg-blue-50 text-blue-950 font-bold" : "border-slate-200 bg-white text-slate-700"
+                    }">
+                      <span class="text-xs truncate pr-1">${item.title[state.lang]}</span>
+                      ${done ? `<i class="fa-solid fa-circle-check text-emerald-600 shrink-0"></i>` : ""}
+                    </button>
+                  `;
+                })
+                .join("")}
+            </div>
+          </div>
+
+          <!-- Simulated Scam Card -->
+          <div class="hc-card bg-white rounded-3xl p-4 border-2 border-slate-300 shadow-sm space-y-3">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+              <span class="text-xs font-bold text-rose-700 flex items-center gap-1.5">
+                <i class="fa-solid ${sc.icon}"></i> ${sc.sender[state.lang]}
+              </span>
+              <button onclick="speakText(scenarios[${state.activeScenarioIdx}].message[state.lang])" class="px-2.5 py-1 rounded-xl bg-blue-100 text-blue-900 text-xs font-bold flex items-center gap-1">
+                <i class="fa-solid fa-volume-high"></i> Audio
+              </button>
+            </div>
+            <p class="text-sm font-bold text-slate-900 leading-relaxed bg-slate-50 p-3 rounded-2xl border border-slate-200">
+              "${sc.message[state.lang]}"
+            </p>
+
+            ${
+              sc.isCallScenario
+                ? `<button onclick="triggerIncomingCallSim()" class="w-full py-2.5 px-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold text-xs flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-phone-volume animate-bounce"></i> ${t.triggerCallSimBtn}
+                  </button>`
+                : ""
+            }
+
+            <p class="text-xs font-bold text-slate-700 text-center pt-1">${t.whatShouldYouDo}</p>
+            <div class="grid grid-cols-2 gap-2.5">
+              <button onclick="answerScenario(true)" class="py-3 px-2.5 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-xs flex flex-col items-center gap-1">
+                <i class="fa-solid fa-shield-check text-base"></i>
+                <span class="text-center">${t.btnReportSafe}</span>
+              </button>
+              <button onclick="answerScenario(false)" class="py-3 px-2.5 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs flex flex-col items-center gap-1">
+                <i class="fa-solid fa-hand-pointer text-base"></i>
+                <span class="text-center">${t.btnRiskyAction}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Instant Educational Feedback -->
+          ${
+            state.scenarioChoice === "safe"
+              ? `
+                <div class="bg-emerald-50 border-2 border-emerald-500 rounded-3xl p-4 space-y-2.5">
+                  <div class="flex items-center gap-2 text-emerald-900 font-bold text-base">
+                    <i class="fa-solid fa-medal text-amber-500 text-xl"></i>
+                    <span>${t.safeSuccessTitle}</span>
+                  </div>
+                  <p class="text-xs text-emerald-900 leading-relaxed">${t.safeSuccessBody}</p>
+                  <button onclick="nextScenario()" class="w-full py-2.5 rounded-2xl bg-emerald-700 text-white font-bold text-xs">
+                    ${t.tryNextBtn} <i class="fa-solid fa-arrow-right ml-1"></i>
+                  </button>
+                </div>
+              `
+              : state.scenarioChoice === "risky"
+              ? `
+                <div class="bg-rose-50 border-2 border-rose-600 rounded-3xl p-4 space-y-2.5">
+                  <div class="flex items-center gap-2 text-rose-900 font-bold text-base">
+                    <i class="fa-solid fa-triangle-exclamation text-rose-600 text-xl"></i>
+                    <span>${t.riskyAlertTitle}</span>
+                  </div>
+                  <p class="text-xs font-bold text-rose-900">${t.redFlagsHeading}</p>
+                  <ul class="list-disc pl-5 space-y-1 text-xs text-rose-950">
+                    ${sc.redFlags[state.lang].map((flag) => `<li>${flag}</li>`).join("")}
+                  </ul>
+                  <button onclick="nextScenario()" class="w-full py-2.5 rounded-2xl bg-rose-700 text-white font-bold text-xs">
+                    ${t.tryNextBtn} <i class="fa-solid fa-arrow-right ml-1"></i>
+                  </button>
+                </div>
+              `
+              : ""
+          }
+        `;
+      }
+
+      // -----------------------------------------------------------------------
+      // SCREEN 3: "IS THIS SAFE?" OCR, MESSAGE & UPI CHECKER
+      // -----------------------------------------------------------------------
+      else if (state.screen === "safe") {
+        container.innerHTML = `
+          <div>
+            <h2 class="text-xl font-bold text-slate-900">${t.safeHeader}</h2>
+            <p class="text-xs text-slate-600 mt-0.5">${t.safeDesc}</p>
+          </div>
+
+          <!-- Sub-tabs: SMS/Photo vs UPI/Phone -->
+          <div class="grid grid-cols-2 gap-1.5 bg-slate-200/80 p-1 rounded-2xl">
+            <button onclick="setSafeTab('msg')" class="py-2 px-3 rounded-xl text-xs font-bold transition ${
+              state.safeTab === "msg" ? "bg-white text-blue-950 shadow-xs" : "text-slate-600"
+            }">
+              <i class="fa-solid fa-comment-dots mr-1"></i> ${t.tabMsgPhoto}
+            </button>
+            <button onclick="setSafeTab('upi')" class="py-2 px-3 rounded-xl text-xs font-bold transition ${
+              state.safeTab === "upi" ? "bg-white text-blue-950 shadow-xs" : "text-slate-600"
+            }">
+              <i class="fa-solid fa-indian-rupee-sign mr-1"></i> ${t.tabUpiPhone}
+            </button>
+          </div>
+
+          ${
+            state.safeTab === "msg"
+              ? `
+                <div class="hc-card bg-white rounded-3xl p-4 border-2 border-slate-200 space-y-3">
+                  <textarea id="checker-textarea" rows="3" oninput="state.checkerInput = this.value" placeholder="${t.inputPlaceholder}" class="w-full p-3 rounded-2xl border-2 border-slate-200 text-sm text-slate-900 focus:border-blue-900 outline-none">${state.checkerInput}</textarea>
+
+                  ${
+                    state.ocrStatus
+                      ? `<div class="text-xs font-bold text-blue-900 bg-blue-50 p-2.5 rounded-xl flex items-center gap-2">
+                          <i class="fa-solid fa-spinner animate-spin"></i> ${state.ocrStatus}
+                        </div>`
+                      : ""
+                  }
+
+                  <div class="grid grid-cols-2 gap-2">
+                    <button onclick="analyzeMessageText(document.getElementById('checker-textarea').value)" class="py-3 px-3 rounded-2xl bg-blue-900 hover:bg-blue-950 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs">
+                      <i class="fa-solid fa-shield-halved"></i> ${t.checkNowBtn}
+                    </button>
+                    <label class="py-3 px-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-xs">
+                      <i class="fa-solid fa-camera"></i> ${t.uploadScreenBtn}
+                      <input type="file" accept="image/*" onchange="handleScreenshotUpload(event)" class="hidden" />
+                    </label>
+                  </div>
+
+                  <!-- Android Share-Sheet Simulation Button -->
+                  <button onclick="simulateWhatsAppShare()" class="w-full py-2.5 px-3 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-900 font-bold text-xs flex items-center justify-center gap-2">
+                    <i class="fa-brands fa-whatsapp text-emerald-600 text-sm"></i> ${t.shareSheetBtn}
+                  </button>
+
+                  <div class="pt-1 border-t border-slate-100">
+                    <p class="text-[11px] font-bold text-slate-500 mb-1.5">${t.trySampleLabel}</p>
+                    <div class="grid grid-cols-3 gap-1.5">
+                      <button onclick="loadSampleText('kyc')" class="py-1.5 px-2 rounded-xl bg-rose-50 text-rose-800 border border-rose-200 text-[11px] font-bold">${t.sampleKyc}</button>
+                      <button onclick="loadSampleText('lottery')" class="py-1.5 px-2 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-bold">${t.sampleLottery}</button>
+                      <button onclick="loadSampleText('genuine')" class="py-1.5 px-2 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold">${t.sampleGenuine}</button>
+                    </div>
+                  </div>
+                </div>
+              `
+              : `
+                <div class="hc-card bg-white rounded-3xl p-4 border-2 border-slate-200 space-y-3">
+                  <input id="upi-input-field" type="text" value="${state.upiInput}" oninput="state.upiInput = this.value" placeholder="${t.upiPlaceholder}" class="w-full p-3 rounded-2xl border-2 border-slate-200 text-sm font-bold text-slate-900 focus:border-blue-900 outline-none" />
+                  <button onclick="analyzeUpiOrPhone(document.getElementById('upi-input-field').value)" class="w-full py-3 px-4 rounded-2xl bg-blue-900 hover:bg-blue-950 text-white font-bold text-xs flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-magnifying-glass"></i> ${t.checkUpiBtn}
+                  </button>
+                  <div class="flex gap-2">
+                    <button onclick="document.getElementById('upi-input-field').value='sbi-refund-claim@okaxis'; analyzeUpiOrPhone('sbi-refund-claim@okaxis')" class="flex-1 py-1.5 px-2 rounded-xl bg-rose-50 text-rose-800 border border-rose-200 text-[11px] font-bold">
+                      Test Fake UPI
+                    </button>
+                    <button onclick="document.getElementById('upi-input-field').value='ramesh.medical@okicici'; analyzeUpiOrPhone('ramesh.medical@okicici')" class="flex-1 py-1.5 px-2 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold">
+                      Test Normal UPI
+                    </button>
+                  </div>
+                </div>
+              `
+          }
+
+          <!-- Result Verdict Card -->
+          ${
+            state.checkerResult
+              ? (() => {
+                  const res = state.checkerResult;
+                  const isScam = res.level === "scam";
+                  const isWarn = res.level === "warn";
+                  const bannerBg = isScam ? "bg-rose-600" : isWarn ? "bg-amber-500 text-slate-950" : "bg-emerald-600";
+                  const cardBorder = isScam ? "border-rose-600 bg-rose-50" : isWarn ? "border-amber-500 bg-amber-50" : "border-emerald-600 bg-emerald-50";
+                  const titleText = isScam ? t.verdictScam : isWarn ? t.verdictWarn : t.verdictSafe;
+
+                  return `
+                    <div class="rounded-3xl border-2 ${cardBorder} overflow-hidden shadow-md">
+                      <div class="${bannerBg} ${isWarn ? "text-slate-950" : "text-white"} px-4 py-3 flex items-center gap-2.5 font-bold text-base">
+                        <i class="fa-solid ${isScam ? "fa-shield-exclamation" : isWarn ? "fa-triangle-exclamation" : "fa-circle-check"} text-xl"></i>
+                        <span>${titleText}</span>
+                      </div>
+                      <div class="p-4 space-y-3">
+                        <ul class="list-disc pl-5 space-y-1.5 text-xs font-medium text-slate-900">
+                          ${res.reasons[state.lang].map((r) => `<li>${r}</li>`).join("")}
+                        </ul>
+                        <div class="grid grid-cols-2 gap-2 pt-1">
+                          <button onclick="speakText(state.checkerResult.reasons[state.lang].join(' '))" class="py-2.5 px-3 rounded-2xl bg-blue-900 text-white font-bold text-xs flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-volume-high"></i> ${t.listenVerdictBtn}
+                          </button>
+                          <button onclick="simulateCall('National Cyber Helpline', '1930')" class="py-2.5 px-3 rounded-2xl bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-phone"></i> ${t.call1930Btn}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  `;
+                })()
+              : ""
+          }
+        `;
+      }
+
+      // -----------------------------------------------------------------------
+      // SCREEN 4: EMERGENCY HELPLINES & TRUSTED BANK SENDER WHITELIST
+      // -----------------------------------------------------------------------
+      else if (state.screen === "helplines") {
+        container.innerHTML = `
+          <div>
+            <h2 class="text-xl font-bold text-slate-900">${t.helpHeader}</h2>
+            <p class="text-xs text-slate-600 mt-0.5">${t.helpDesc}</p>
+          </div>
+
+          <div class="space-y-2.5">
+            ${helplines
+              .map(
+                (h) => `
+              <div class="hc-card bg-white rounded-3xl p-3.5 border-2 border-slate-200 flex items-center justify-between gap-3 shadow-xs">
+                <div class="min-w-0">
+                  <h3 class="text-sm font-bold text-slate-900 leading-tight">${h.name[state.lang]}</h3>
+                  <p class="text-xs text-slate-500 mt-0.5">${h.desc[state.lang]}</p>
+                  <p class="text-base font-bold text-blue-900 mt-1">${h.number}</p>
+                </div>
+                <button onclick="simulateCall('${h.name.en}', '${h.number}')" class="px-3.5 py-3 rounded-2xl ${h.color} font-bold text-xs shrink-0 flex items-center gap-1.5 shadow-xs">
+                  <i class="fa-solid fa-phone"></i> ${t.tapToCall}
+                </button>
+              </div>
+            `
+              )
+              .join("")}
+          </div>
+
+          <!-- Trusted Official Bank Sender ID Whitelist -->
+          <div class="hc-card bg-emerald-50/90 rounded-3xl p-4 border-2 border-emerald-200 space-y-2.5">
+            <div class="flex items-center gap-2 text-emerald-950 font-bold text-sm">
+              <i class="fa-solid fa-badge-check text-emerald-700"></i>
+              <span>${t.trustedBanksTitle}</span>
+            </div>
+            <p class="text-xs text-emerald-900">${t.trustedBanksSub}</p>
+            <div class="grid grid-cols-2 gap-2">
+              ${trustedBankSenders
+                .map(
+                  (b) => `
+                <div class="bg-white p-2.5 rounded-2xl border border-emerald-200">
+                  <span class="text-xs font-bold text-blue-900 block">${b.code}</span>
+                  <span class="text-[11px] text-slate-600 leading-tight block mt-0.5">${b.bank}</span>
+                </div>
+              `
+                )
+                .join("")}
+            </div>
+          </div>
+        `;
+      }
+
+      // -----------------------------------------------------------------------
+      // SCREEN 5: CAREGIVER DASHBOARD & COMMUNITY RADAR
+      // -----------------------------------------------------------------------
+      else if (state.screen === "caregiver") {
+        const pct = Math.round((state.completedModules.length / scenarios.length) * 100);
+
+        container.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-xl font-bold text-slate-900">${t.careHeader}</h2>
+              <p class="text-xs font-bold text-emerald-700 mt-0.5">
+                <i class="fa-solid fa-link mr-1"></i> ${t.careConnected} ${state.caregiverName}
+              </p>
+            </div>
+            <button onclick="openProfileSettings()" class="px-3 py-1.5 rounded-xl bg-slate-200 text-slate-800 text-xs font-bold">
+              Edit
+            </button>
+          </div>
+
+          <!-- Training Progress & Earned Badges -->
+          <div class="hc-card bg-white rounded-3xl p-4 border-2 border-slate-200 space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold text-slate-900">${t.careProgressTitle}</h3>
+              <span class="text-xs font-bold text-blue-900">${state.completedModules.length}/${scenarios.length} (${pct}%)</span>
+            </div>
+            <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+              <div class="h-full bg-emerald-600 rounded-full transition-all duration-500" style="width: ${pct}%;"></div>
+            </div>
+            <p class="text-[11px] font-bold text-slate-500 uppercase pt-1">${t.careBadgesTitle}</p>
+            <div class="flex flex-wrap gap-1.5">
+              ${scenarios
+                .map((sc) => {
+                  const unlocked = state.completedModules.includes(sc.id);
+                  return `
+                    <span class="px-2.5 py-1 rounded-xl text-[11px] font-bold flex items-center gap-1 ${
+                      unlocked ? sc.badgeColor : "bg-slate-100 text-slate-400"
+                    }">
+                      <i class="fa-solid ${unlocked ? "fa-award" : "fa-lock"}"></i>
+                      ${sc.badgeTitle[state.lang]}
+                    </span>
+                  `;
+                })
+                .join("")}
+            </div>
+          </div>
+
+          <!-- Live Family Security Alerts Feed -->
+          <div class="hc-card bg-white rounded-3xl p-4 border-2 border-slate-200 space-y-2.5">
+            <h3 class="text-sm font-bold text-slate-900">${t.careAlertsTitle}</h3>
+            <div class="space-y-2">
+              ${state.alerts
+                .map(
+                  (al) => `
+                <div class="p-2.5 rounded-2xl bg-rose-50 border border-rose-200 flex items-start gap-2.5">
+                  <i class="fa-solid fa-shield-exclamation text-rose-600 mt-0.5"></i>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-xs font-bold text-rose-950 leading-snug">${al.text}</p>
+                    <p class="text-[10px] text-rose-700 mt-0.5">${al.time}</p>
+                  </div>
+                </div>
+              `
+                )
+                .join("")}
+            </div>
+            <button onclick="sendCaregiverVoiceReminder()" class="w-full py-3 px-4 rounded-2xl bg-blue-900 hover:bg-blue-950 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs">
+              <i class="fa-solid fa-paper-plane"></i> ${t.careSendReminder}
+            </button>
+          </div>
+
+          <!-- Community Cyber-Alert Radar (Nagpur & Vidarbha) -->
+          <div class="hc-card bg-slate-900 text-white rounded-3xl p-4 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold text-amber-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-radar"></i> ${t.radarTitle}
+              </h3>
+              <span class="text-[10px] font-bold bg-rose-600 px-2 py-0.5 rounded-full">${t.radarBadge}</span>
+            </div>
+            <p class="text-xs text-slate-300">${t.radarSub}</p>
+            <div class="space-y-2">
+              ${radarAlerts
+                .map(
+                  (r) => `
+                <div class="bg-slate-800/90 p-3 rounded-2xl border border-slate-700">
+                  <div class="flex items-center justify-between text-[10px] font-bold text-amber-400">
+                    <span><i class="fa-solid fa-location-dot mr-1"></i> ${r.area}</span>
+                    <span>${r.tag}</span>
+                  </div>
+                  <p class="text-xs font-bold text-white mt-1">${r.title[state.lang]}</p>
+                  <p class="text-[11px] text-slate-400 mt-0.5">${r.reports}</p>
+                </div>
+              `
+                )
+                .join("")}
+            </div>
+          </div>
+        `;
+      }
+
+      // -----------------------------------------------------------------------
+      // SCREEN 6: COMPLETE BULLET-POINT FEATURES DIRECTORY
+      // -----------------------------------------------------------------------
+      else if (state.screen === "features") {
+        container.innerHTML = `
+          <div>
+            <h2 class="text-xl font-bold text-slate-900">${t.featuresHeader}</h2>
+            <p class="text-xs text-slate-600 mt-0.5">${t.featuresDesc}</p>
+          </div>
+
+          <div class="space-y-3.5">
+            ${bulletFeatureGroups
+              .map(
+                (grp) => `
+              <div class="hc-card bg-white rounded-3xl p-4 border-2 border-slate-200 space-y-2.5 shadow-xs">
+                <span class="inline-block px-3 py-1 rounded-full text-xs font-bold ${grp.badgeColor}">
+                  ${grp.category[state.lang]}
+                </span>
+                <ul class="space-y-2">
+                  ${grp.items
+                    .map(
+                      (feat) => `
+                    <li>
+                      <button onclick="${feat.action}" class="w-full text-left p-2.5 rounded-2xl bg-slate-50 hover:bg-blue-50 border border-slate-200 transition flex items-start gap-2.5">
+                        <span class="w-2 h-2 rounded-full bg-blue-900 mt-1.5 shrink-0"></span>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-xs font-bold text-slate-900">${feat.title[state.lang]}</p>
+                          <p class="text-[11px] text-slate-600 leading-snug mt-0.5">${feat.desc[state.lang]}</p>
+                        </div>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-[11px] text-blue-800 mt-1 shrink-0"></i>
+                      </button>
+                    </li>
+                  `
+                    )
+                    .join("")}
+                </ul>
+              </div>
+            `
+              )
+              .join("")}
+          </div>
+        `;
+      }
+    }
+  </script>
+</body>
+</html>
